@@ -3,7 +3,7 @@ import { Steps, Aside } from '@astrojs/starlight/components';
 
 **Device claiming** transfers a device from the tenant's account to a specific customer. A manufacturer ships thousands of devices pre-provisioned under the tenant — then each end customer claims their own unit using a secret key. Once claimed, only that customer's users can see the device and its data.
 
-There are two scenarios depending on what the device can do. Both end the same way: the customer opens the **Claim Device** widget, enters the device name and secret key, and ownership transfers.
+There are two scenarios depending on what the device can do. Both end the same way: the customer opens the <DocLink product={props.product} path='TODO'>**Claim Device**</DocLink> widget, enters the device name and secret key, and ownership transfers.
 
 ## Device-Side Claiming
 
@@ -35,14 +35,14 @@ Use this when the device has a display, button, or indicator and can show the cu
     │                           │      (status)         │
 ```
 
-### 1. Enable Claiming
+#### 1. Enable Claiming
 
 Claiming must be enabled before a device can publish claiming data. Choose one:
 
 - **Globally** — set `SECURITY_CLAIM_ALLOW_CLAIMING_BY_DEFAULT=true`
 - **Per device** — add a server-side attribute `claimingAllowed = true` on the device
 
-### 2. Device Publishes the Claiming Key
+#### 2. Device Publishes the Claiming Key
 
 The device sends the following payload over any supported transport (MQTT, HTTP, CoAP):
 
@@ -62,9 +62,9 @@ ThingsBoard stores the key and records its expiry in the device's `expirationTim
   See the transport-specific API reference for the exact topic/path to publish to: <DocLink product={props.product} path='TODO'>MQTT</DocLink>, <DocLink product={props.product} path='TODO'>HTTP</DocLink>, <DocLink product={props.product} path='TODO'>CoAP</DocLink>. The <DocLink product={props.product} path='TODO'>IoT Gateway MQTT API</DocLink> also supports batch claiming for multiple devices.
 </Aside>
 
-### 3. Customer Claims the Device
+#### 3. Customer Claims the Device
 
-The customer uses the **Claim Device** widget (or the REST API below), entering the device name and the secret key shown on the device.
+The customer uses the <DocLink product={props.product} path='TODO'>**Claim Device**</DocLink> widget (or the REST API below), entering the device name and the secret key shown on the device.
 
 ## Server-Side Claiming
 
@@ -93,7 +93,7 @@ Use this when the device has no UI at all — NB-IoT sensors, LoRaWAN trackers, 
     │                          │      (status)         │
 ```
 
-### 1. Upload the Claiming Data
+#### 1. Upload the Claiming Data
 
 For each device, set a server-side attribute named `claimingData`:
 
@@ -109,13 +109,13 @@ For each device, set a server-side attribute named `claimingData`:
 
 This can be done via the UI (**Device → Attributes → Add**) or in bulk via the <DocLink product={props.product} path='TODO'>REST API</DocLink>.
 
-### 2. Distribute the Key
+#### 2. Distribute the Key
 
 Send the device name and secret key to the customer through any external channel. The customer will need both to complete claiming.
 
-### 3. Customer Claims the Device
+#### 3. Customer Claims the Device
 
-Same as device-side: the customer uses the **Claim Device** widget or calls the REST API.
+Same as device-side: the customer uses the <DocLink product={props.product} path='TODO'>**Claim Device**</DocLink> widget or calls the REST API.
 
 ## Claiming via REST API
 
