@@ -142,28 +142,44 @@ const recipeItems = (prefix: string) => [
 const referenceItems = (prefix: string) => [
 	`${prefix}/configuration-reference`,
 	{
-		label: 'HTTP API',
+		label: 'Device API',
 		items: [
-			`${prefix}/http-api/getting-connected`,
-			`${prefix}/http-api/telemetry`,
-			`${prefix}/http-api/attributes`,
-			`${prefix}/http-api/rpc`,
-			`${prefix}/http-api/claiming`,
-			`${prefix}/http-api/provisioning`,
+			{
+				label: 'HTTP API',
+				items: [
+					`${prefix}/http-api/getting-connected`,
+					`${prefix}/http-api/telemetry`,
+					`${prefix}/http-api/attributes`,
+					`${prefix}/http-api/rpc`,
+					`${prefix}/http-api/claiming`,
+					`${prefix}/http-api/provisioning`,
+				],
+			},
+			{
+				label: 'CoAP API',
+				items: [
+					`${prefix}/coap-api/getting-connected`,
+					`${prefix}/coap-api/telemetry`,
+					`${prefix}/coap-api/attributes`,
+					`${prefix}/coap-api/rpc`,
+					`${prefix}/coap-api/claiming`,
+					`${prefix}/coap-api/provisioning`,
+				],
+			},
+			{
+				label: 'MQTT API',
+				items: [
+					`${prefix}/mqtt-api/getting-connected`,
+					`${prefix}/mqtt-api/telemetry`,
+					`${prefix}/mqtt-api/attributes`,
+					`${prefix}/mqtt-api/rpc`,
+					`${prefix}/mqtt-api/claiming`,
+					`${prefix}/mqtt-api/provisioning`,
+				],
+			},
+			`${prefix}/sparkplug-api`,
 		],
 	},
-	{
-		label: 'MQTT API',
-		items: [
-			`${prefix}/mqtt-api/getting-connected`,
-			`${prefix}/mqtt-api/telemetry`,
-			`${prefix}/mqtt-api/attributes`,
-			`${prefix}/mqtt-api/rpc`,
-			`${prefix}/mqtt-api/claiming`,
-			`${prefix}/mqtt-api/provisioning`,
-		],
-	},
-	`${prefix}/sparkplug-api`,
 ];
 
 export const opensourceSidebar: SidebarConfig = [
