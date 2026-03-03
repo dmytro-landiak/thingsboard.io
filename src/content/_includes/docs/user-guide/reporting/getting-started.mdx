@@ -1,7 +1,8 @@
 import DocLink from '@components/DocLink.astro';
 import { Steps, Aside } from '@astrojs/starlight/components';
+import PEFeatureBanner from '~/components/PEFeatureBanner.astro';
 
-<Aside type="note" title="Reporting is available in ThingsBoard PE starting from version 4.2"></Aside>
+<PEFeatureBanner product={props.product} path="user-guide/reporting/getting-started" />
 
 **Reporting** allows you to generate PDF or CSV reports from live platform data and deliver them automatically — on a schedule or in response to system events (e.g., alarms).
 

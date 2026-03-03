@@ -222,6 +222,37 @@ import DocImage from '~/components/DocImage.astro';
 
 Images inside `.doc-image-row` share equal width (`flex: 1`) and stack vertically on screens ≤640px. The `.doc-image-row` styles are defined inside `DocImage.astro` via `:global()` and are available on any page that renders a `DocImage`.
 
+### PEFeatureBanner Component
+
+`src/components/PEFeatureBanner.astro` — reusable banner for PE/Cloud-only features. Only renders on CE pages.
+
+**Message:** "This feature is available in **ThingsBoard Professional** and **ThingsBoard Cloud** only." with `DocLink` links to the PE and PAAS versions of the same page.
+
+**Props:**
+
+```ts
+interface Props {
+  product: Products;   // Current product — banner only shows when CE
+  path?: string;       // Path to corresponding docs page (e.g. "user-guide/reporting/getting-started")
+                       // Used to generate links to both PE and Cloud (PAAS) versions
+                       // When omitted, links to installation pages
+}
+```
+
+**Usage in MDX `_includes`:**
+
+```mdx
+import PEFeatureBanner from '~/components/PEFeatureBanner.astro';
+
+{/* Links to specific PE and Cloud pages */}
+<PEFeatureBanner product={props.product} path="user-guide/reporting/getting-started" />
+
+{/* Links to PE and Cloud installation pages (default) */}
+<PEFeatureBanner product={props.product} />
+```
+
+**When to use:** At the top of any include file for a feature that is only available in PE and Cloud editions. Do NOT use the old `<Aside type="note" title="... available in PE ...">` pattern or inline `PEOnly` badge spans for page-level banners.
+
 ### Badge Component & tb-badge
 
 `src/components/Badge.astro` — thin wrapper around Starlight's `<Badge>` with custom styles.
