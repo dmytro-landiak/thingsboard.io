@@ -1,62 +1,9 @@
 import DocLink from '@components/DocLink.astro';
 import { Steps, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+import { Code } from '@astrojs/starlight/components';
 import { PE_FULL_VER, TRENDZ_VER } from '~/data/versions';
 
-export const peImage = `thingsboard/tb-pe-node:${PE_FULL_VER}`;
-export const webReportImage = `thingsboard/tb-pe-web-report:${PE_FULL_VER}`;
-export const trendzImage = `thingsboard/trendz:${TRENDZ_VER}`;
-
-This guide walks you through installing and starting ThingsBoard Professional Edition using Docker and Docker Compose on Linux or macOS. This guide covers standalone ThingsBoard PE installation. For cluster setup, see <DocLink product={props.product} path="TODO">Cluster Setup</DocLink>.
-
-## Prerequisites
-
-Install Docker:
-- <a href="https://docs.docker.com/engine/install/ubuntu/" target="_blank">Docker for Ubuntu</a>
-- <a href="https://docs.docker.com/engine/install/centos/" target="_blank">Docker for CentOS</a>
-- <a href="https://docs.docker.com/desktop/setup/install/mac-install/" target="_blank">Docker Desktop for macOS</a>
-
-<Aside type="caution">
-On Linux, add your user to the `docker` group so you can run commands without `sudo`.
-See <a href="https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user" target="_blank">Manage Docker as a non-root user</a>.
-</Aside>
-
-## Running requirements
-
-A server with at least **4 GB of RAM** (8 GB recommended) and minimal load (a few messages per second).
-
-## Step 1. Obtain the license key
-
-We assume you have already chosen your subscription plan or decided to purchase a perpetual license. If not, navigate to the <a href="https://thingsboard.io/pricing/" target="_blank">pricing page</a> to select the best license option for your case. See <a href="https://www.youtube.com/watch?v=dK-QDFGxWek" target="_blank">How to get a pay-as-you-go subscription</a> or <a href="https://www.youtube.com/watch?v=GPe0lHolWek" target="_blank">How to get a perpetual license</a> for details.
-
-<Aside type="note">
-We will reference the license key you obtained in this step as `PUT_YOUR_LICENSE_SECRET_HERE` later in this guide.
-</Aside>
-
-## Step 2. Choose a queue service
-
-ThingsBoard uses a message broker for internal communication between services:
-
-- **In Memory** — built-in, default. Suitable for development and PoC environments. Not recommended for production or cluster deployments.
-- **Kafka** — recommended for production. Used on most ThingsBoard production environments. Works for on-prem and private cloud deployments. Some cloud providers offer managed Kafka (e.g. <a href="https://aws.amazon.com/msk/" target="_blank">AWS MSK</a>).
-- **Confluent Cloud** — fully managed streaming platform based on Kafka. Useful for cloud-agnostic deployments.
-
-## Step 3. Create docker compose file
-
-<Tabs>
-<TabItem label="In Memory (default)">
-
-In Memory queue is built-in and requires no extra configuration.
-
-Create the docker compose file:
-
-```bash
-nano docker-compose.yml
-```
-
-Add the following content. Replace `PUT_YOUR_LICENSE_SECRET_HERE` with your license secret obtained in Step 1:
-
-```yml maxLines=20 collapsible
-services:
+export const inMemoryYaml = `services:
   postgres:
     restart: always
     image: "postgres:16"
@@ -69,7 +16,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
   thingsboard-pe:
     restart: always
-    image: "thingsboard/tb-pe-node:4.3.0.1PE"
+    image: "thingsboard/tb-pe-node:${PE_FULL_VER}"
     ports:
       - "8080:8080"
       - "1883:1883"
@@ -88,6 +35,7 @@ services:
       TB_LICENSE_INSTANCE_DATA_FILE: /data/license.data
       REPORTS_SERVER_ENDPOINT_URL: http://tb-web-report:8383
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/thingsboard
+      # Pre-configured for optional Trendz Analytics integration
       DEFAULT_TRENDZ_URL: http://trendz:8888
       DEFAULT_TB_URL: http://thingsboard-pe:8080
     volumes:
@@ -96,7 +44,7 @@ services:
       - postgres
   tb-web-report:
     restart: always
-    image: "thingsboard/tb-pe-web-report:4.3.0.1PE"
+    image: "thingsboard/tb-pe-web-report:${PE_FULL_VER}"
     ports:
       - "8383"
     depends_on:
@@ -118,24 +66,9 @@ volumes:
     driver: local
   license-data:
     name: tb-pe-license-data
-    driver: local
-```
+    driver: local`;
 
-</TabItem>
-<TabItem label="Kafka (production)">
-
-<a href="https://kafka.apache.org/" target="_blank">Apache Kafka</a> is an open-source stream-processing software platform.
-
-Create the docker compose file:
-
-```bash
-nano docker-compose.yml
-```
-
-Add the following content. Replace `PUT_YOUR_LICENSE_SECRET_HERE` with your license secret obtained in Step 1:
-
-```yml maxLines=20 collapsible
-services:
+export const kafkaYaml = `services:
   postgres:
     restart: always
     image: "postgres:16"
@@ -172,7 +105,7 @@ services:
       - kafka-data:/bitnami
   thingsboard-pe:
     restart: always
-    image: "thingsboard/tb-pe-node:4.3.0.1PE"
+    image: "thingsboard/tb-pe-node:${PE_FULL_VER}"
     ports:
       - "8080:8080"
       - "1883:1883"
@@ -191,6 +124,7 @@ services:
       TB_LICENSE_INSTANCE_DATA_FILE: /data/license.data
       REPORTS_SERVER_ENDPOINT_URL: http://tb-web-report:8383
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/thingsboard
+      # Pre-configured for optional Trendz Analytics integration
       DEFAULT_TRENDZ_URL: http://trendz:8888
       DEFAULT_TB_URL: http://thingsboard-pe:8080
       TB_QUEUE_TYPE: kafka
@@ -202,7 +136,7 @@ services:
       - kafka
   tb-web-report:
     restart: always
-    image: "thingsboard/tb-pe-web-report:4.3.0.1PE"
+    image: "thingsboard/tb-pe-web-report:${PE_FULL_VER}"
     ports:
       - "8383"
     depends_on:
@@ -227,24 +161,9 @@ volumes:
     driver: local
   kafka-data:
     name: tb-pe-kafka-data
-    driver: local
-```
+    driver: local`;
 
-</TabItem>
-<TabItem label="Confluent Cloud">
-
-To use <a href="https://confluent.cloud/login" target="_blank">Confluent Cloud</a>, first create an account, then create a <a href="https://docs.confluent.io/current/quickstart/cloud-quickstart/index.html#step-1-create-a-ak-cluster-in-ccloud" target="_blank">Kafka cluster</a> and obtain your <a href="https://docs.confluent.io/current/quickstart/cloud-quickstart/index.html#step-4-create-an-api-key" target="_blank">API Key</a>.
-
-Create the docker compose file:
-
-```bash
-nano docker-compose.yml
-```
-
-Add the following content. Replace `PUT_YOUR_LICENSE_SECRET_HERE` with your license secret, and `CLUSTER_API_KEY`, `CLUSTER_API_SECRET`, `localhost:9092` with your Confluent Cloud values:
-
-```yml maxLines=20 collapsible
-services:
+export const confluentYaml = `services:
   postgres:
     restart: always
     image: "postgres:16"
@@ -257,7 +176,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
   thingsboard-pe:
     restart: always
-    image: "thingsboard/tb-pe-node:4.3.0.1PE"
+    image: "thingsboard/tb-pe-node:${PE_FULL_VER}"
     ports:
       - "8080:8080"
       - "1883:1883"
@@ -276,6 +195,7 @@ services:
       TB_LICENSE_INSTANCE_DATA_FILE: /data/license.data
       REPORTS_SERVER_ENDPOINT_URL: http://tb-web-report:8383
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/thingsboard
+      # Pre-configured for optional Trendz Analytics integration
       DEFAULT_TRENDZ_URL: http://trendz:8888
       DEFAULT_TB_URL: http://thingsboard-pe:8080
       TB_QUEUE_TYPE: kafka
@@ -297,7 +217,7 @@ services:
       - license-data:/data
   tb-web-report:
     restart: always
-    image: "thingsboard/tb-pe-web-report:4.3.0.1PE"
+    image: "thingsboard/tb-pe-web-report:${PE_FULL_VER}"
     ports:
       - "8383"
     depends_on:
@@ -319,8 +239,131 @@ volumes:
     driver: local
   license-data:
     name: tb-pe-license-data
+    driver: local`;
+
+export const trendzYaml = `services:
+  trendz:
+    restart: always
+    image: "thingsboard/trendz:${TRENDZ_VER}"
+    ports:
+      - "8888:8888"
+    environment:
+      TB_API_URL: http://thingsboard-pe:8080
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/trendz
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SCRIPT_ENGINE_DOCKER_PROVIDER_URL: trendz-python-executor:8181
+      SCRIPT_ENGINE_TIMEOUT: 30000
+    volumes:
+      - trendz-conf:/trendz-config-files
+      - trendz-data:/data
+    depends_on:
+      - postgres
+  trendz-python-executor:
+    restart: always
+    image: "thingsboard/trendz-python-executor:${TRENDZ_VER}"
+    ports:
+      - "8181:8181"
+    environment:
+      EXECUTOR_MANAGER: 1
+      EXECUTOR_SCRIPT_ENGINE: 6
+      THROTTLING_QUEUE_CAPACITY: 10
+      THROTTLING_THREAD_POOL_SIZE: 6
+      NETWORK_BUFFER_SIZE: 5242880
+    volumes:
+      - trendz-python-executor-conf:/python-executor-config-files
+      - trendz-python-executor-data:/data
+
+volumes:
+  trendz-conf:
+    name: trendz-conf
     driver: local
+  trendz-data:
+    name: trendz-data
+    driver: local
+  trendz-python-executor-conf:
+    name: trendz-python-executor-conf
+    driver: local
+  trendz-python-executor-data:
+    name: trendz-python-executor-data
+    driver: local`;
+
+This guide walks you through installing and starting ThingsBoard Professional Edition using Docker and Docker Compose on Linux or macOS. This guide covers standalone ThingsBoard PE installation. For cluster setup, see <DocLink product={props.product} path="TODO">Cluster Setup</DocLink>.
+
+## Prerequisites
+
+Install Docker:
+- <a href="https://docs.docker.com/engine/install/ubuntu/" target="_blank">Docker for Ubuntu</a>
+- <a href="https://docs.docker.com/engine/install/centos/" target="_blank">Docker for CentOS</a>
+- <a href="https://docs.docker.com/desktop/setup/install/mac-install/" target="_blank">Docker Desktop for macOS</a>
+
+A server with at least **4 GB of RAM** (8 GB recommended) and minimal load (a few messages per second).
+
+<Aside type="caution">
+On Linux, add your user to the `docker` group so you can run commands without `sudo`.
+See <a href="https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user" target="_blank">Manage Docker as a non-root user</a>.
+</Aside>
+
+## Step 1. Obtain the license key
+
+We assume you have already chosen your subscription plan or decided to purchase a perpetual license. If not, navigate to the <a href="https://thingsboard.io/pricing/" target="_blank">pricing page</a> to select the best license option for your case. See <a href="https://www.youtube.com/watch?v=dK-QDFGxWek" target="_blank">How to get a pay-as-you-go subscription</a> or <a href="https://www.youtube.com/watch?v=GPe0lHolWek" target="_blank">How to get a perpetual license</a> for details.
+
+<Aside type="note">
+We will reference the license key you obtained in this step as `PUT_YOUR_LICENSE_SECRET_HERE` later in this guide.
+</Aside>
+
+## Step 2. Create docker compose file
+
+ThingsBoard uses a message broker for internal communication between services. Choose one of the options below:
+
+- **In Memory** — built-in, default. Suitable for development and PoC environments. Not recommended for production or cluster deployments.
+- **Kafka** — recommended for production. Used on most ThingsBoard production environments. Works for on-prem and private cloud deployments. Some cloud providers offer managed Kafka (e.g. <a href="https://aws.amazon.com/msk/" target="_blank">AWS MSK</a>).
+- **Confluent Cloud** — fully managed streaming platform based on Kafka. Useful for cloud-agnostic deployments.
+
+<Tabs>
+<TabItem label="In Memory (default)">
+
+In Memory queue is built-in and requires no extra configuration.
+
+Create the docker compose file:
+
+```bash
+nano docker-compose.yml
 ```
+
+Add the following content. Replace `PUT_YOUR_LICENSE_SECRET_HERE` with your license secret obtained in Step 1:
+
+<Code code={inMemoryYaml} lang="yml" meta="maxLines=20 collapsible" />
+
+</TabItem>
+<TabItem label="Kafka (production)">
+
+<a href="https://kafka.apache.org/" target="_blank">Apache Kafka</a> is an open-source stream-processing software platform.
+
+Create the docker compose file:
+
+```bash
+nano docker-compose.yml
+```
+
+Add the following content. Replace `PUT_YOUR_LICENSE_SECRET_HERE` with your license secret obtained in Step 1:
+
+<Code code={kafkaYaml} lang="yml" meta="maxLines=20 collapsible" />
+
+</TabItem>
+<TabItem label="Confluent Cloud">
+
+To use <a href="https://confluent.cloud/login" target="_blank">Confluent Cloud</a>, first create an account, then create a <a href="https://docs.confluent.io/current/quickstart/cloud-quickstart/index.html#step-1-create-a-ak-cluster-in-ccloud" target="_blank">Kafka cluster</a> and obtain your <a href="https://docs.confluent.io/current/quickstart/cloud-quickstart/index.html#step-4-create-an-api-key" target="_blank">API Key</a>.
+
+Create the docker compose file:
+
+```bash
+nano docker-compose.yml
+```
+
+Add the following content. Replace `PUT_YOUR_LICENSE_SECRET_HERE` with your license secret, and `CLUSTER_API_KEY`, `CLUSTER_API_SECRET`, `localhost:9092` with your Confluent Cloud values:
+
+<Code code={confluentYaml} lang="yml" meta="maxLines=20 collapsible" />
 
 You can update the default Rule Engine queue configuration using the UI. See <DocLink product={props.product} path="TODO">Rule Engine Queues</DocLink> for details.
 
@@ -340,11 +383,12 @@ You can update the default Rule Engine queue configuration using the UI. See <Do
 | `5683-5688:5683-5688/udp` | CoAP and LwM2M ports |
 | `tb-pe-license-data` | Docker volume for license instance data |
 | `tb-postgres-data` | Docker volume for PostgreSQL data |
+| `tb-web-report` | Sidecar service for generating PDF/PNG dashboard reports |
 | `thingsboard-pe` | Container name |
 | `restart: always` | Auto-restart on reboot or failure |
 | `image: "thingsboard/tb-pe-node:..."` | ThingsBoard PE Docker image |
 
-## Step 4. Initialize database schema and system assets
+## Step 3. Initialize database schema and system assets
 
 Before starting ThingsBoard, initialize the database schema and load built-in assets:
 
@@ -357,7 +401,7 @@ docker compose run --rm -e INSTALL_TB=true -e LOAD_DEMO=true thingsboard-pe
 | `INSTALL_TB=true` | Installs the core database schema and system resources (widgets, images, rule chains, etc.) |
 | `LOAD_DEMO=true` | Loads sample tenant account, dashboards, and devices for evaluation and testing |
 
-## Step 5. Start the platform
+## Step 4. Start the platform
 
 Bring up all containers in detached mode, then follow the ThingsBoard logs:
 
@@ -381,6 +425,8 @@ You can change passwords for each account in the account profile page.
 
 You can safely detach from the log stream (Ctrl+C) — containers will continue running.
 
+See <DocLink product={props.product} path="tutorial/getting-started">Getting Started</DocLink> for your next steps after login.
+
 ## Inspect logs and control containers
 
 Stream the ThingsBoard container logs:
@@ -403,7 +449,7 @@ docker compose up -d
 
 ## Install Trendz Analytics (optional)
 
-You may optionally install <DocLink product={props.product} path="TODO">Trendz Analytics</DocLink> at any time.
+You may optionally install <DocLink product={props.product} path="TODO">Trendz Analytics</DocLink> at any time. The Trendz compose file extends the main `docker-compose.yml` — always run them together.
 
 <Steps>
 1. Create the Trendz database in PostgreSQL:
@@ -420,54 +466,7 @@ You may optionally install <DocLink product={props.product} path="TODO">Trendz A
 
 3. Add the following content:
 
-   ```yml maxLines=20 collapsible
-   services:
-     trendz:
-       restart: always
-       image: "thingsboard/trendz:1.15.0.4"
-       ports:
-         - "8888:8888"
-       environment:
-         TB_API_URL: http://thingsboard-pe:8080
-         SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/trendz
-         SPRING_DATASOURCE_USERNAME: postgres
-         SPRING_DATASOURCE_PASSWORD: postgres
-         SCRIPT_ENGINE_DOCKER_PROVIDER_URL: trendz-python-executor:8181
-         SCRIPT_ENGINE_TIMEOUT: 30000
-       volumes:
-         - trendz-conf:/trendz-config-files
-         - trendz-data:/data
-       depends_on:
-         - postgres
-     trendz-python-executor:
-       restart: always
-       image: "thingsboard/trendz-python-executor:1.15.0.4"
-       ports:
-         - "8181:8181"
-       environment:
-         EXECUTOR_MANAGER: 1
-         EXECUTOR_SCRIPT_ENGINE: 6
-         THROTTLING_QUEUE_CAPACITY: 10
-         THROTTLING_THREAD_POOL_SIZE: 6
-         NETWORK_BUFFER_SIZE: 5242880
-       volumes:
-         - trendz-python-executor-conf:/python-executor-config-files
-         - trendz-python-executor-data:/data
-
-   volumes:
-     trendz-conf:
-       name: trendz-conf
-       driver: local
-     trendz-data:
-       name: trendz-data
-       driver: local
-     trendz-python-executor-conf:
-       name: trendz-python-executor-conf
-       driver: local
-     trendz-python-executor-data:
-       name: trendz-python-executor-data
-       driver: local
-   ```
+   <Code code={trendzYaml} lang="yml" meta="maxLines=20 collapsible" title="docker-compose-trendz.yml" />
 </Steps>
 
 ### Trendz docker compose parameters

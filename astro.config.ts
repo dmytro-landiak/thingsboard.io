@@ -1,6 +1,4 @@
 import starlight from '@astrojs/starlight';
-import { pluginCollapsibleSections } from '@expressive-code/plugin-collapsible-sections';
-import { pluginMaxLines, pluginWrap } from './config/plugins/expressive-code-max-lines';
 import { defineConfig, sharpImageService } from 'astro/config';
 import rehypeSlug from 'rehype-slug';
 import remarkSmartypants from 'remark-smartypants';
@@ -92,9 +90,6 @@ export default defineConfig({
 		]),
 		starlight({
 			title: 'Docs',
-			expressiveCode: {
-				plugins: [pluginCollapsibleSections(), pluginMaxLines(), pluginWrap()],
-			},
 			markdown: {
 				processedDirs: ['./src/content/_includes'],
 			},
