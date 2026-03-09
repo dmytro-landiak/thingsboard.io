@@ -3,8 +3,8 @@ import { Aside } from '@astrojs/starlight/components';
 
 The Entity Data Query API is a powerful, flexible way to search, filter, and subscribe to entities in ThingsBoard. It is used by:
 
-- **REST API** — `POST /api/entitiesQuery/find` and `POST /api/entitiesQuery/count`
-- **WebSocket API** — `ENTITY_DATA` and `ENTITY_COUNT` command types
+- <DocLink product={props.product} path='reference/rest-api'>REST API</DocLink> — `POST /api/entitiesQuery/find` and `POST /api/entitiesQuery/count`
+- <DocLink product={props.product} path='reference/websocket-api'>WebSocket API</DocLink> — `ENTITY_DATA` and `ENTITY_COUNT` command types
 
 Both interfaces accept the same query structure, so everything on this page applies to both REST and WebSocket usage. The <DocLink product={props.product} path='reference/alarm-query-api'>Alarm Query API</DocLink> extends this format with alarm-specific fields.
 
