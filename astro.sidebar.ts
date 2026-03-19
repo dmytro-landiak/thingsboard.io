@@ -2286,10 +2286,219 @@ export const trendzSidebar: SidebarConfig = [
 		translations: { uk: 'Початок роботи' },
 		items: [
 			'docs/trendz',
+			{ slug: 'docs/trendz/getting-started', label: 'Tutorial' },
 			{
-				label: 'Key concepts',
-				items: ['docs/trendz/concepts/business-entities'],
+				label: 'Activation',
+				items: [
+					{ slug: 'docs/trendz/activation/how-to', label: 'Overview' },
+					{ slug: 'docs/trendz/activation/public-cloud', label: 'Cloud (US / EU)' },
+					{ slug: 'docs/trendz/activation/private-cloud', label: 'Private Cloud' },
+					{ slug: 'docs/trendz/activation/self-managed', label: 'Self-Managed' },
+				],
 			},
+		],
+	},
+	{
+		label: 'Documentation',
+		items: [
+			{ slug: 'docs/trendz/what-is-trendz', label: 'What is Trendz Analytics?' },
+			{
+				label: 'Key Concepts',
+				collapsed: true,
+				items: [
+					'docs/trendz/concepts/business-entities',
+					'docs/trendz/concepts/telemetry-aggregation',
+					'docs/trendz/concepts/group-by-time',
+					'docs/trendz/concepts/group-by-category',
+					'docs/trendz/concepts/data-filtering',
+				],
+			},
+			{
+				label: 'Visualizations',
+				collapsed: true,
+				items: [
+					{ slug: 'docs/trendz/visualizations-overview', label: 'Overview' },
+					{
+						label: 'View Types',
+						collapsed: true,
+						items: [
+							'docs/trendz/visualizations-tables',
+							'docs/trendz/visualizations-line',
+							'docs/trendz/visualizations-bar',
+							'docs/trendz/visualizations-pie',
+							'docs/trendz/visualizations-scatter',
+							'docs/trendz/visualizations-heatmap',
+							'docs/trendz/visualizations-calendar',
+							'docs/trendz/visualizations-card',
+							'docs/trendz/visualizations-card-with-line',
+							'docs/trendz/visualizations-ai-card',
+						],
+					},
+					'docs/trendz/view-settings',
+					'docs/trendz/view-collections',
+				],
+			},
+			{
+				label: 'Trendz on Dashboards',
+				collapsed: true,
+				items: [
+					'docs/trendz/embed-visuals',
+					'docs/trendz/widget-filter-by-alias',
+					'docs/trendz/trendz-bundle',
+					'docs/trendz/widget-actions',
+					'docs/trendz/widget-settings',
+				],
+			},
+			{
+				label: 'Metric Explorer',
+				collapsed: true,
+				items: [
+					'docs/trendz/metric/overview',
+					'docs/trendz/metric/generate-new-metric',
+					'docs/trendz/metric/use-in-thingsboard',
+				],
+			},
+			{
+				label: 'Anomaly Detection',
+				collapsed: true,
+				items: [
+					{ slug: 'docs/trendz/anomaly/overview', label: 'Overview' },
+					{ slug: 'docs/trendz/anomaly/build', label: 'Model Properties' },
+					{ slug: 'docs/trendz/anomaly/refresh-reprocess', label: 'Refresh & Reprocess' },
+					{ slug: 'docs/trendz/anomaly/save-to-tb', label: 'Save to ThingsBoard' },
+					{ slug: 'docs/trendz/anomaly/visualization', label: 'Visualization' },
+					{ slug: 'docs/trendz/anomaly/alarms', label: 'Alarms' },
+				],
+			},
+			{
+				label: 'Calculated Fields',
+				collapsed: true,
+				items: [
+					'docs/trendz/calculations/overview',
+					'docs/trendz/calculations/batch',
+					'docs/trendz/calculations/native',
+					'docs/trendz/calculations/save-to-thingsboard',
+					'docs/trendz/calculations/time-to-value',
+				],
+			},
+			{
+				label: 'Prediction',
+				collapsed: true,
+				items: [
+					'docs/trendz/prediction',
+					'docs/trendz/prediction/custom-python-models',
+					'docs/trendz/prediction/predict-remaining-time',
+					'docs/trendz/prediction/save-to-thingsboard',
+				],
+			},
+			{
+				label: 'AI Features',
+				collapsed: true,
+				items: [
+					'docs/trendz/ai-assistance-overview',
+					'docs/trendz/ai-assistance-widget',
+					'docs/trendz/ai-widget-summary',
+					'docs/trendz/ai-assistance-prompts',
+				],
+			},
+			'docs/trendz/states',
+			{
+				label: 'Settings',
+				collapsed: true,
+				items: [
+					{ slug: 'docs/trendz/settings', label: 'Overview' },
+					'docs/trendz/cache-settings',
+					'docs/trendz/mix-sql-datasource',
+					{
+						label: 'White Labeling',
+						collapsed: true,
+						items: [
+							{ slug: 'docs/trendz/white-labeling/overview', label: 'Overview' },
+							{ slug: 'docs/trendz/white-labeling/custom-translation', label: 'Custom Translation' },
+						],
+					},
+					{ slug: 'docs/trendz/custom-ai-model-configuration', label: 'AI Settings' },
+				],
+			},
+			{
+				label: 'Other',
+				collapsed: true,
+				items: [
+					'docs/trendz/topology-discovery',
+					'docs/trendz/tasks-service',
+					'docs/trendz/rest-api',
+				],
+			},
+			{
+				label: 'Versions & Support',
+				collapsed: true,
+				items: [
+					'docs/trendz/releases/release-policy',
+					'docs/trendz/releases/releases-table',
+				],
+			},
+		],
+	},
+	{
+		label: 'Guides',
+		collapsed: false,
+		items: [
+			{ slug: 'docs/trendz/guide', label: 'Overview' },
+			{
+				label: 'Scenarios',
+				collapsed: false,
+				items: [
+					{ slug: 'docs/trendz/guide/detect-anomalies-in-heat-pumps', label: 'Heat Pump Anomaly Detection' },
+					{ slug: 'docs/trendz/guide/analyze-building-energy-usage-and-carbon-emissions', label: 'Energy & Emissions Analysis' },
+					{ slug: 'docs/trendz/guide/predict-next-maintenance-date-of-equipment', label: 'Predictive Maintenance' },
+					{ slug: 'docs/trendz/guide/industrial-oee-score-monitoring', label: 'Industrial OEE Monitoring' },
+					{ slug: 'docs/trendz/guide/occupancy-analysis-of-the-building', label: 'Predictive Occupancy Monitoring' },
+				],
+			},
+		],
+	},
+	{
+		label: 'Installation',
+		items: [
+			{ slug: 'docs/trendz/install/installation-options', label: 'Overview' },
+			{
+				label: 'Installation Options',
+				collapsed: false,
+				items: [
+					'docs/trendz/install/cloud',
+					{
+						label: 'On-Premises',
+						collapsed: true,
+						items: [
+							'docs/trendz/install/docker',
+							'docs/trendz/install/docker-windows',
+							'docs/trendz/install/ubuntu',
+							'docs/trendz/install/rhel',
+							'docs/trendz/install/windows',
+						],
+					},
+					{
+						label: 'Cluster',
+						collapsed: true,
+						items: [
+							'docs/trendz/install/kubernetes',
+							'docs/trendz/install/docker-compose-setup',
+						],
+					},
+				],
+			},
+			{
+				label: 'Advanced',
+				collapsed: true,
+				items: [
+					'docs/trendz/install/python-executor-configuration',
+					'docs/trendz/install/connect-thingsboard',
+					'docs/trendz/install/post-installation-steps',
+					'docs/trendz/install/configuration-properties',
+					'docs/trendz/install/old-docker-migrate',
+				],
+			},
+			'docs/trendz/install/upgrade-instructions',
 		],
 	},
 ];
@@ -2365,7 +2574,12 @@ export const tbmqSidebarTabLinks: SidebarTabLinks = {};
 export const tbmqPeSidebarTabLinks: SidebarTabLinks = {};
 export const mobileSidebarTabLinks: SidebarTabLinks = {};
 export const mobilePeSidebarTabLinks: SidebarTabLinks = {};
-export const trendzSidebarTabLinks: SidebarTabLinks = {};
+export const trendzSidebarTabLinks: SidebarTabLinks = {
+	'Getting Started': '/docs/trendz/',
+	'Documentation': '/docs/trendz/what-is-trendz/',
+	'Guides': '/docs/trendz/guide/',
+	'Installation': '/docs/trendz/install/installation-options/',
+};
 export const licenseSidebarTabLinks: SidebarTabLinks = {};
 
 /**
