@@ -23,7 +23,7 @@ export const tbCeFaq: FaqCategory[] = [
 			{
 				id: 'ce-pe-difference',
 				question: 'How does the Community Edition differ from Professional Edition?',
-				answer: '<p>Community Edition includes essential features for IoT device management, data collection, visualization, and rule processing. The Professional Edition offers advanced features such as white-labeling, RBAC, integrations, etc. You can find a more detailed comparison <a target="_blank" href="/products/thingsboard-pe/">here</a>.</p>',
+				answer: '<p>Community Edition includes essential features for IoT device management, data collection, visualization, and rule processing. The Professional Edition offers advanced features such as white-labeling, RBAC, integrations, etc. You can find a more detailed comparison <a target="_blank" href="/products/thingsboard-pe/">on the ThingsBoard PE page</a>.</p>',
 			},
 			{
 				id: 'ce-connect-devices-limit',
@@ -45,7 +45,7 @@ export const tbCeFaq: FaqCategory[] = [
 			{
 				id: 'ce-clustering',
 				question: 'Does the Community Edition support clustering?',
-				answer: '<p>Yes, clustering is fully supported in the Community Edition. You can find more details about deployment scenarios <a target="_blank" href="/docs/reference/iot-platform-deployment-scenarios/">here</a>.</p>',
+				answer: '<p>Yes, clustering is fully supported in the Community Edition. You can find more details about deployment scenarios <a target="_blank" href="/docs/reference/iot-platform-deployment-scenarios/">in the deployment scenarios reference</a>.</p>',
 			},
 			{
 				id: 'ce-customize',
@@ -76,7 +76,7 @@ export const tbCeFaq: FaqCategory[] = [
 			{
 				id: 'ce-database-support',
 				question: 'What databases does the Community Edition support?',
-				answer: '<p>The Community Edition supports pure SQL or a hybrid SQL + NoSQL (for telemetry storage) . For more details on database options, you can check <a target="_blank" href="/docs/reference/#sql-vs-nosql-vs-hybrid-database-approach">here</a>.</p>',
+				answer: '<p>The Community Edition supports pure SQL or a hybrid SQL + NoSQL (for telemetry storage) . For more details on database options, you can check <a target="_blank" href="/docs/reference/#sql-vs-nosql-vs-hybrid-database-approach">the database approach reference</a>.</p>',
 			},
 			{
 				id: 'official-docker-ce',
@@ -86,7 +86,7 @@ export const tbCeFaq: FaqCategory[] = [
 			{
 				id: 'ce-on-raspberry-edge',
 				question: 'Can I run the Community Edition on Raspberry Pi or other edge devices?',
-				answer: '<p>Yes, but performance may be limited due to hardware constraints. You can check details <a target="_blank" href="/docs/user-guide/install/installation-options/">here</a>.</p>',
+				answer: '<p>Yes, but performance may be limited due to hardware constraints. You can check details <a target="_blank" href="/docs/user-guide/install/installation-options/">in the installation options guide</a>.</p>',
 			},
 			{
 				id: 'ce-multi-tenancy',
@@ -107,12 +107,12 @@ export const tbCeFaq: FaqCategory[] = [
 			{
 				id: 'ce-features',
 				question: 'What features are included in ThingsBoard Community Edition?',
-				answer: '<p>The Community Edition includes device and asset management, data visualization, rule engine automation, and API integrations. You can find all features and descriptions <a target="_blank" href="/docs/">here</a>.</p>',
+				answer: '<p>The Community Edition includes device and asset management, data visualization, rule engine automation, and API integrations. You can find all features and descriptions <a target="_blank" href="/docs/">in the documentation</a>.</p>',
 			},
 			{
 				id: 'pe-exclusive-features',
 				question: 'What features are exclusive to the Professional Edition?',
-				answer: '<p>The Professional Edition offers advanced features such as white-labeling, RBAC, advanced rule engine capabilities, platform integrations, etc. You can find a more detailed comparison <a target="_blank" href="/products/thingsboard-pe/">here</a>.</p>',
+				answer: '<p>The Professional Edition offers advanced features such as white-labeling, RBAC, advanced rule engine capabilities, platform integrations, etc. You can find a more detailed comparison <a target="_blank" href="/products/thingsboard-pe/">on the ThingsBoard PE page</a>.</p>',
 			},
 			{
 				id: 'ce-white-labeling-support',
