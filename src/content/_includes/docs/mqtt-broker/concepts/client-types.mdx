@@ -12,6 +12,8 @@ The classification reflects a pattern observed consistently in IoT systems: most
 These two roles have fundamentally different persistence and throughput requirements. TBMQ optimizes the message pipeline for each
 separately rather than applying a one-size-fits-all approach.
 
+<ImageGallery images={[{ src: '/src/assets/schemas/client-types-routing.svg', alt: 'TBMQ client-type message routing: every publish lands in the shared Kafka topic tbmq.msg.all, then forks into three paths — persistent DEVICE subscribers go through tbmq.msg.persisted and are stored in Redis; persistent APPLICATION subscribers each get a dedicated Kafka topic tbmq.msg.app.$CLIENT_ID; non-persistent subscribers of either type receive messages only while online.', caption: 'How TBMQ routes a published message based on subscriber client type and session persistence.' }]} />
+
 ## When to use what
 
 | | **DEVICE** | **APPLICATION** |
@@ -20,7 +22,7 @@ separately rather than applying a one-size-fits-all approach.
 | **Typical clients** | Sensors, controllers, IoT gateways | Analytics engines, rule processors, backend services |
 | **Session persistence** | Persistent or non-persistent | Persistent (non-persistent sessions are supported but not recommended) |
 | **Offline message storage** | Redis | Dedicated Kafka topic per client |
-| **Assigned by default** | Yes — unauthenticated clients always get DEVICE type | No — requires authentication with credentials that set `clientType = APPLICATION` |
+| **Assigned by default** | Yes — clients always get DEVICE when no authentication provider is enabled | No — requires authentication with a `clientType = APPLICATION` credential (or a JWT/HTTP provider that returns APPLICATION) |
 | **Per-client Kafka topic** | No | Yes — `tbmq.msg.app.$CLIENT_ID` |
 | **Horizontal scale path** | Add broker nodes; add Redis nodes | Add broker nodes; add Kafka nodes |
 
@@ -38,7 +40,8 @@ and writes the messages to **Redis** before dispatching to online subscribers.
 <ImageGallery images={[{ src: '/src/assets/schemas/device-client.svg', alt: 'DEVICE client message flow: Publisher → tbmq.msg.all → tbmq.msg.persisted → Redis. Non-persistent DEVICE clients are delivered directly; persistent DEVICE clients are delivered immediately when online and on reconnect when offline.', caption: 'Messages flow through tbmq.msg.all and, for persistent DEVICE clients, into tbmq.msg.persisted and Redis. Online subscribers receive the message immediately; offline ones get it when they reconnect.' }]} />
 
 When an offline DEVICE client reconnects, it receives the messages stored in Redis during its absence.
-The number of queued messages delivered on reconnect is controlled by `MQTT_PERSISTENT_SESSION_DEVICE_PERSISTED_MESSAGES_LIMIT`.
+The maximum number of messages stored per DEVICE client is capped by `MQTT_PERSISTENT_SESSION_DEVICE_PERSISTED_MESSAGES_LIMIT`
+(default 10000); once the cap is reached, the oldest messages are evicted.
 
 **Why Redis:** Redis gives DEVICE clients fast random-access reads and low-latency delivery on reconnect.
 Because DEVICE clients typically subscribe to a small number of topics with moderate traffic, the per-device state fits
@@ -69,8 +72,9 @@ If the client ID contains characters outside `[a-zA-Z0-9]`, a hash of the client
 tbmq.msg.app.$CLIENT_ID_HASH
 ```
 
-This hash-based fallback is controlled by `TB_APP_PERSISTED_MSG_CLIENT_ID_VALIDATION` (enabled by default).
-Disabling it prevents topic creation for clients with special characters in their ID.
+The hash-based fallback is controlled by `TB_APP_PERSISTED_MSG_CLIENT_ID_VALIDATION` (enabled by default).
+When disabled, TBMQ uses the raw client ID as the Kafka topic name, and Kafka will reject topic creation
+if the ID contains characters that Kafka does not allow.
 
 <ImageGallery images={[{ src: '/src/assets/schemas/application-client.svg', alt: 'APPLICATION client message flow: tbmq.msg.all → tbmq.msg.app.$CLIENT_ID. Online clients receive messages immediately; offline clients receive them on reconnect from the dedicated Kafka topic.', caption: 'Each APPLICATION client gets its own Kafka topic tbmq.msg.app.$CLIENT_ID. Online clients receive messages immediately; offline clients drain the topic on reconnect, with Kafka providing the durable buffer.' }]} />
 
@@ -85,7 +89,9 @@ this is the right storage primitive. Redis would not sustain the write rate or t
 
 The type is resolved during the CONNECT packet handshake:
 
-1. If both Basic and TLS authentication are disabled, all clients are assigned **DEVICE**.
-2. If authentication is enabled, the `clientType` field on the matching <DocLink product={props.product} path="user-guide/ui/mqtt-client-credentials">MQTT client credential</DocLink> determines the type.
+1. If every authentication provider is disabled, all clients are assigned **DEVICE**.
+2. If at least one provider is enabled, providers are tried in priority order, and the first one that authenticates the client determines its type:
+	- **Basic** and **X.509** providers use the `clientType` field on the matching <DocLink product={props.product} path="user-guide/ui/mqtt-client-credentials">MQTT client credential</DocLink>.
+	- **JWT** and **HTTP** providers resolve the type from the configured claim or response field, falling back to the provider's `defaultClientType` (DEVICE by default).
 
 For details on configuring authentication, see the <DocLink product={props.product} path="security/overview">security overview</DocLink>.

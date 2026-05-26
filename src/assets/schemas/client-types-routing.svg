@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="520" viewBox="0 0 720 520" fill="none" font-family="Roboto, Inter, system-ui, sans-serif">
+	<defs>
+		<pattern id="dotgrid" x="0" y="0" width="14" height="14" patternUnits="userSpaceOnUse">
+			<circle cx="1" cy="1" r="1" fill="#c1c3c8" opacity="0.5"/>
+		</pattern>
+		<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+			<path d="M0,0 L10,5 L0,10 z" fill="#353841"/>
+		</marker>
+		<marker id="arrowGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+			<path d="M0,0 L10,5 L0,10 z" fill="#28650b"/>
+		</marker>
+		<marker id="arrowPink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+			<path d="M0,0 L10,5 L0,10 z" fill="#8a0f3a"/>
+		</marker>
+	</defs>
+
+	<rect width="720" height="520" fill="#fff"/>
+	<rect width="720" height="520" fill="url(#dotgrid)"/>
+
+	<!-- Layer 1: Publisher -->
+	<rect x="250" y="20" width="220" height="44" rx="8" fill="#edeef3" stroke="#c1c3c8" stroke-width="1.5"/>
+	<text x="360" y="47" text-anchor="middle" font-size="14" font-weight="500" fill="#17181c">Publisher (any client)</text>
+
+	<!-- Arrow Publisher -> tbmq.msg.all -->
+	<path d="M360,64 L360,86" stroke="#353841" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+	<!-- Layer 2: tbmq.msg.all -->
+	<rect x="240" y="92" width="240" height="54" rx="8" fill="#edeef3" stroke="#c1c3c8" stroke-width="1.5"/>
+	<text x="360" y="115" text-anchor="middle" font-size="14" font-weight="500" fill="#17181c">tbmq.msg.all</text>
+	<text x="360" y="133" text-anchor="middle" font-size="11" fill="#353841">shared Kafka topic</text>
+
+	<!-- 3-way fan-out trunk -->
+	<path d="M360,146 L360,170" stroke="#353841" stroke-width="1.5"/>
+	<path d="M120,170 L600,170" stroke="#353841" stroke-width="1.5"/>
+	<path d="M120,170 L120,188" stroke="#28650b" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
+	<path d="M360,170 L360,188" stroke="#353841" stroke-width="1.5" marker-end="url(#arrow)"/>
+	<path d="M600,170 L600,188" stroke="#8a0f3a" stroke-width="1.5" marker-end="url(#arrowPink)"/>
+
+	<!-- Layer 3: Subscriber types -->
+	<!-- DEVICE persistent -->
+	<rect x="20" y="194" width="200" height="64" rx="8" fill="#defbd0" stroke="#28650b" stroke-width="1.5"/>
+	<text x="120" y="219" text-anchor="middle" font-size="14" font-weight="600" fill="#28650b">DEVICE subscriber</text>
+	<text x="120" y="238" text-anchor="middle" font-size="11" fill="#28650b">persistent session</text>
+
+	<!-- Non-persistent (dashed neutral) -->
+	<rect x="260" y="194" width="200" height="64" rx="8" fill="#edeef3" stroke="#c1c3c8" stroke-width="1.5" stroke-dasharray="5 3"/>
+	<text x="360" y="219" text-anchor="middle" font-size="14" font-weight="600" fill="#353841">Non-persistent</text>
+	<text x="360" y="238" text-anchor="middle" font-size="11" fill="#353841">DEVICE or APPLICATION</text>
+
+	<!-- APPLICATION persistent -->
+	<rect x="500" y="194" width="200" height="64" rx="8" fill="#f9c3d6" stroke="#8a0f3a" stroke-width="1.5"/>
+	<text x="600" y="219" text-anchor="middle" font-size="14" font-weight="600" fill="#8a0f3a">APPLICATION subscriber</text>
+	<text x="600" y="238" text-anchor="middle" font-size="11" fill="#8a0f3a">persistent session</text>
+
+	<!-- Arrows from subscriber boxes to persistence layer -->
+	<path d="M120,258 L120,286" stroke="#28650b" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
+	<path d="M600,258 L600,286" stroke="#8a0f3a" stroke-width="1.5" marker-end="url(#arrowPink)"/>
+
+	<!-- Center column terminus -->
+	<text x="360" y="278" text-anchor="middle" font-size="11" font-style="italic" fill="#353841">delivered while online</text>
+	<text x="360" y="294" text-anchor="middle" font-size="11" font-style="italic" fill="#353841">no offline buffer</text>
+
+	<!-- Layer 4: Persisted Kafka topics -->
+	<rect x="20" y="294" width="200" height="56" rx="8" fill="#defbd0" stroke="#28650b" stroke-width="1.5"/>
+	<text x="120" y="317" text-anchor="middle" font-size="13" font-weight="500" fill="#28650b">tbmq.msg.persisted</text>
+	<text x="120" y="335" text-anchor="middle" font-size="11" fill="#28650b">Kafka topic</text>
+
+	<rect x="500" y="294" width="200" height="56" rx="8" fill="#f9c3d6" stroke="#8a0f3a" stroke-width="1.5"/>
+	<text x="600" y="317" text-anchor="middle" font-size="13" font-weight="500" fill="#8a0f3a">tbmq.msg.app.$CLIENT_ID</text>
+	<text x="600" y="335" text-anchor="middle" font-size="11" fill="#8a0f3a">Kafka topic per client</text>
+
+	<!-- Arrows to storage backends -->
+	<path d="M120,350 L120,384" stroke="#28650b" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
+	<path d="M600,350 L600,384" stroke="#8a0f3a" stroke-width="1.5" marker-end="url(#arrowPink)"/>
+
+	<!-- Layer 5: Storage backends -->
+	<rect x="20" y="392" width="200" height="76" rx="8" fill="#4fdf0c" stroke="#28650b" stroke-width="1.5"/>
+	<text x="120" y="418" text-anchor="middle" font-size="16" font-weight="700" fill="#17181c">Redis</text>
+	<text x="120" y="438" text-anchor="middle" font-size="11" fill="#17181c">ZSET + key/TTL</text>
+	<text x="120" y="454" text-anchor="middle" font-size="11" fill="#17181c">capped per client</text>
+
+	<rect x="500" y="392" width="200" height="76" rx="8" fill="#f53d7d" stroke="#8a0f3a" stroke-width="1.5"/>
+	<text x="600" y="418" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">Kafka</text>
+	<text x="600" y="438" text-anchor="middle" font-size="11" fill="#fff">append-log per client</text>
+	<text x="600" y="454" text-anchor="middle" font-size="11" fill="#fff">durable offline buffer</text>
+
+	<!-- Legend -->
+	<g transform="translate(20, 492)">
+		<rect x="0" y="0" width="14" height="14" rx="3" fill="#defbd0" stroke="#28650b" stroke-width="1.5"/>
+		<text x="22" y="11" font-size="11" fill="#17181c">DEVICE path · Redis-backed</text>
+
+		<rect x="220" y="0" width="14" height="14" rx="3" fill="#edeef3" stroke="#c1c3c8" stroke-width="1.5" stroke-dasharray="3 2"/>
+		<text x="242" y="11" font-size="11" fill="#17181c">Non-persistent · online only</text>
+
+		<rect x="440" y="0" width="14" height="14" rx="3" fill="#f9c3d6" stroke="#8a0f3a" stroke-width="1.5"/>
+		<text x="462" y="11" font-size="11" fill="#17181c">APPLICATION path · Kafka-backed</text>
+	</g>
+</svg>

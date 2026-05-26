@@ -20,7 +20,7 @@
 
 | # | Section | Status | Done / Total |
 |---|---|---|---|
-| 1 | Getting Started: Welcome & Core concepts | not started | 0 / 9 |
+| 1 | Getting Started: Welcome & Core concepts | done | 9 / 9 |
 | 2 | Guides: Security | not started | 0 / 13 |
 | 3 | Guides: MQTT essentials | not started | 0 / 10 |
 | 4 | Guides: Integration with ThingsBoard | not started | 0 / 1 |
@@ -33,7 +33,7 @@
 | 11 | Reference: REST APIs | not started | 0 / 4 |
 | 12 | Releases & Support | not started | 0 / 4 |
 | 13 | Guides landing | not started | 0 / 1 |
-| | **Total** | | **0 / 72** |
+| | **Total** | | **9 / 72** |
 
 Phase 3 — Final synthesis: `tbmq-docs-future-work.md` (root). Status: pending.
 
@@ -53,15 +53,15 @@ Each guide row lists: include · CE stub · PE stub (or `—` if absent).
 
 ## Section 1 — Getting Started: Welcome & Core concepts (0/9)
 
-- [ ] **G1.1** `index.mdx` · CE: `index.mdx` · PE: `pe/index.mdx`
-- [ ] **G1.2** `why-tbmq.mdx` · CE: `why-tbmq.mdx` · PE: `pe/why-tbmq.mdx`
-- [ ] **G1.3** `getting-started.mdx` · CE: `getting-started.mdx` · PE: `pe/getting-started.mdx`
-- [ ] **G1.4** `concepts/client-types.mdx` · CE: `concepts/client-types.mdx` · PE: `pe/concepts/client-types.mdx`
-- [ ] **G1.5** `concepts/sessions.mdx` · CE: `concepts/sessions.mdx` · PE: `pe/concepts/sessions.mdx`
-- [ ] **G1.6** `concepts/topics.mdx` · CE: `concepts/topics.mdx` · PE: `pe/concepts/topics.mdx`
-- [ ] **G1.7** `concepts/qos.mdx` · CE: `concepts/qos.mdx` · PE: `pe/concepts/qos.mdx`
-- [ ] **G1.8** `concepts/security.mdx` · CE: `concepts/security.mdx` · PE: `pe/concepts/security.mdx`
-- [ ] **G1.9** `concepts/clustering.mdx` · CE: `concepts/clustering.mdx` · PE: `pe/concepts/clustering.mdx`
+- [x] **G1.1** `index.mdx` · CE: `index.mdx` · PE: `pe/index.mdx`
+- [x] **G1.2** `why-tbmq.mdx` · CE: `why-tbmq.mdx` · PE: `pe/why-tbmq.mdx`
+- [x] **G1.3** `getting-started.mdx` · CE: `getting-started.mdx` · PE: `pe/getting-started.mdx`
+- [x] **G1.4** `concepts/client-types.mdx` · CE: `concepts/client-types.mdx` · PE: `pe/concepts/client-types.mdx`
+- [x] **G1.5** `concepts/sessions.mdx` · CE: `concepts/sessions.mdx` · PE: `pe/concepts/sessions.mdx`
+- [x] **G1.6** `concepts/topics.mdx` · CE: `concepts/topics.mdx` · PE: `pe/concepts/topics.mdx`
+- [x] **G1.7** `concepts/qos.mdx` · CE: `concepts/qos.mdx` · PE: `pe/concepts/qos.mdx`
+- [x] **G1.8** `concepts/security.mdx` · CE: `concepts/security.mdx` · PE: `pe/concepts/security.mdx`
+- [x] **G1.9** `concepts/clustering.mdx` · CE: `concepts/clustering.mdx` · PE: `pe/concepts/clustering.mdx`
 
 ## Section 2 — Guides: Security (0/13)
 
@@ -179,7 +179,31 @@ Each guide row lists: include · CE stub · PE stub (or `—` if absent).
 (Appended after each section finishes. Each entry lists, for every guide in the section: file, change counts by category, any could-not-verify items, and any open questions for the user.)
 
 ### Section 1 — Getting Started
-_(pending)_
+
+Repo refs at start: TBMQ CE `~/projects/tbmq` `develop/2.4` @ `a2d88dd56`; TBMQ PE `~/projects/tbmq-pe` `develop/2.4` @ `c847299f2`. Diff: 9 includes touched, +543/-244 lines; no stubs modified.
+
+| Guide | Grammar | Tech | MQTT | Cmd | Diagrams | Could-not-verify | Open Qs |
+|---|---|---|---|---|---|---|---|
+| G1.1 `index.mdx` | 3 | 0 | 0 | 0 | 0 | none | "Connect in minutes" SplitCard could embed `<LiveDemoCard />` for SSOT — held off (visual balance / design review needed) |
+| G1.2 `why-tbmq.mdx` | 9 | 4 | 1 (§3.3, §3.4) | 0 | 3 | none | Legacy MQTT 3.1 link points to fragile IBM developerWorks host — consider durable URL |
+| G1.3 `getting-started.mdx` | 19 | 1 | 0 | 0 | 1 | `pnpm check` not run (node_modules missing) | Env var `SECURITY_MQTT_BASIC_ENABLED=true` still in bundled docker-compose / k8s but no longer read by Java code — cleanup out of scope |
+| G1.4 `concepts/client-types.mdx` | 4 | 3 | 0 | 0 | 1 | `pnpm check` not run (node_modules missing) | `ClientType` enum also has `INTEGRATION` — internal use, not exposed via credentials. Add a footnote? |
+| G1.5 `concepts/sessions.mdx` | 6 | 3 | 1 (5.0 §3.1.2.11.2, §4.1) | 0 | 1 | none | Operational TTL detail in this conceptual page — move to user-guide/clean-persistent-sessions instead? |
+| G1.6 `concepts/topics.mdx` | 6 | 4 | 2 (5.0 §1.5.4, §4.7.1.3) | 0 | 2 | none | Aside suggesting `MQTT_TOPIC_MAX_SEGMENTS_COUNT=5–10` is editorial, not from any source — confirm guidance number or loosen wording |
+| G1.7 `concepts/qos.mdx` | 9 | 5 | 3 (3.1.1 §3.6 §4.3.3 §4.4, 5.0 §3.6 §4.4 §3.9.3) | 0 | 2 | none | none |
+| G1.8 `concepts/security.mdx` | 12 | 5 | 3 (5.0 §3.15 §3.4.2.1 §3.5.2.1 §3.9.3 §3.2.2.2, 3.1.1 §3.9.3 §3.2.2.3) | 0 | 1 | none | none |
+| G1.9 `concepts/clustering.mdx` | 9 | 3 | 0 (cited 3.1.1 §3.3.1, §4.4 / 5.0 §4.4, §4.8.2 for reference) | 0 | 1 | none | Dead `import { Products }` mirrors siblings — strip across all concept pages? Optional "Shared subs in a cluster" subsection — flagged, not added |
+
+**Totals:** Grammar/clarity edits: 77 · Technical fixes: 28 · MQTT spec fixes: 10 · Command fixes: 0 · Diagram placeholders added: 12
+
+**Cross-section themes for the user:**
+
+1. **Dead `import { Products }` in concept page MDX.** G1.9 noted this — `Products` is imported but only `props.product` is used. All six concept pages share the pattern. Consider a follow-up cleanup PR (out of scope here).
+2. **Legacy MQTT 3.1 reference link** in G1.2 points to an IBM developerWorks draft (fragile host). Worth flagging for a more durable canonical URL.
+3. **Stale env var `SECURITY_MQTT_BASIC_ENABLED`** in bundled docker-compose / k8s manifests but not read by current Java code (G1.3). Out-of-scope cleanup item.
+4. **`ClientType.INTEGRATION`** exists in the enum but is internal-only — not exposed via MQTT credentials (G1.4). Add a one-line footnote? Decision deferred.
+5. **No stubs were edited.** Every change landed in the shared include only, so CE and PE see the same content (as the spec requires).
+6. **No commands needed correction in this section.** All `mosquitto_pub/sub`, install script, docker-compose, env-var, and topic-name strings were preserved verbatim and verified against TBMQ source.
 
 ### Section 2 — Security
 _(pending)_

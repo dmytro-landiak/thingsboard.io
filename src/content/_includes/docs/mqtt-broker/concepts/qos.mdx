@@ -5,12 +5,12 @@ import { Products } from '~/models/site.models';
 
 MQTT Quality of Service (QoS) defines the delivery contract between sender and receiver for each message.
 It answers one question: what guarantee does the sender need that the receiver got the message?
-Three levels are available — each a trade-off between reliability and the number of network round trips required.
+Three levels are available, each a trade-off between reliability and the number of network round trips required.
 
-Choosing the right level matters because the wrong choice in either direction has a cost: QoS 0 loses messages on unreliable
-links; QoS 2 adds four-packet overhead to every message and can become a bottleneck at high throughput.
-Most IoT deployments use QoS 1 as the default and reserve QoS 2 for the small subset of messages where duplicate processing
-would cause real harm.
+The right choice matters because the wrong one has a cost in either direction. QoS 0 loses messages on unreliable
+links. QoS 2 adds four-packet overhead to every message and can become a bottleneck at high throughput.
+Most IoT deployments use QoS 1 as the default and reserve QoS 2 for the small subset of messages where duplicate
+processing would cause real harm.
 
 ## Comparison
 
@@ -19,9 +19,9 @@ would cause real harm.
 | **Guarantee** | At most once | At least once | Exactly once |
 | **Delivery** | Best-effort | Guaranteed | Guaranteed |
 | **Duplicates possible** | No | Yes | No |
-| **Packets** | 1 | 2 | 4 |
+| **Packets per message** | 1 (`PUBLISH`) | 2 (`PUBLISH`, `PUBACK`) | 4 (`PUBLISH`, `PUBREC`, `PUBREL`, `PUBCOMP`) |
 | **Relative overhead** | Lowest | Medium | Highest |
-| **Offline queuing** | No | Yes (persistent session) | Yes (persistent session) |
+| **Offline queuing for subscriber** | Never | Persistent session only | Persistent session only |
 
 ## QoS 0 — at most once
 
@@ -29,23 +29,26 @@ The message is sent once with no acknowledgement. If the network drops the packe
 
 <ImageGallery images={[{ src: '/src/assets/schemas/qos-0.svg', alt: 'QoS 0 message flow: a single PUBLISH packet sent from sender to receiver with no acknowledgement.', caption: 'QoS 0 — at most once. The sender fires a single PUBLISH and forgets it.' }]} />
 
-The sender removes the message from its queue immediately after sending. No retry, no confirmation.
+The sender removes the message from its queue immediately after sending. There is no retry and no confirmation.
 
-**Use when:** message loss is acceptable and recency matters more than completeness.
+**Use when** message loss is acceptable and recency matters more than completeness.
 Typical examples: high-frequency sensor readings where the next value will arrive within seconds,
 UI state broadcasts, or metrics where an occasional gap is tolerable.
 
 ## QoS 1 — at least once
 
-The message is delivered at least once. The sender retransmits until it receives a `PUBACK`.
+The message is delivered at least once. The sender keeps it as in-flight until a matching `PUBACK` arrives.
+Any unacknowledged message is resent at the next opportunity — at minimum when the session resumes with a
+persistent client, as required by the MQTT specification.
 
-<ImageGallery images={[{ src: '/src/assets/schemas/qos-1.svg', alt: 'QoS 1 message flow: PUBLISH from sender, then PUBACK from receiver. Sender retransmits until acknowledged.', caption: 'QoS 1 — at least once. The sender keeps retransmitting PUBLISH until it receives a PUBACK.' }]} />
+<ImageGallery images={[{ src: '/src/assets/schemas/qos-1.svg', alt: 'QoS 1 message flow: PUBLISH from sender, then PUBACK from receiver. Sender retransmits until acknowledged.', caption: 'QoS 1 — at least once. The sender keeps the PUBLISH in-flight until it receives a PUBACK.' }]} />
 
-If the `PUBACK` is lost in transit, the sender retransmits with the `DUP` flag set. The receiver may therefore
-process the same message more than once, so consumers must be **idempotent** — able to handle duplicates safely.
+If the `PUBACK` is lost in transit, the sender retransmits the `PUBLISH` with the `DUP` flag set. The receiver
+may therefore process the same message more than once, so consumers must be **idempotent** — able to handle
+duplicates safely.
 
-**Use when:** every message must arrive, and your processing logic can tolerate or deduplicate repeated delivery.
-Typical examples: telemetry from vehicles, security alerts, device state changes.
+**Use when** every message must arrive and your processing logic can tolerate or deduplicate repeated delivery.
+Typical examples: telemetry from vehicles, security alerts, and device state changes.
 
 ## QoS 2 — exactly once
 
@@ -53,17 +56,39 @@ The message is delivered exactly once through a four-packet handshake that preve
 
 <ImageGallery images={[{ src: '/src/assets/schemas/qos-2.svg', alt: 'QoS 2 four-packet handshake: PUBLISH, PUBREC, PUBREL, PUBCOMP. Sender stores message, receiver stores packet ID, sender releases, receiver confirms release.', caption: 'QoS 2 — exactly once. A four-packet handshake guarantees neither loss nor duplication: PUBLISH → PUBREC → PUBREL → PUBCOMP.' }]} />
 
-Neither side may reuse the packet ID until the full handshake completes.
-This is what guarantees exactly-once delivery: the receiver will not process the message until step 3 (`PUBREL`),
-and both sides persist enough state to resume after a crash.
+Neither side may reuse the packet ID until the full handshake completes. The receiver tracks the packet ID
+from `PUBLISH` until it sends `PUBCOMP`, and any retransmitted `PUBLISH` arriving in that window is recognised
+as a duplicate and discarded rather than re-processed. Both sides persist enough state to resume the handshake
+after a crash, which is what closes the duplicate-delivery window across reconnects.
 
-**Use when:** duplicate processing causes real harm.
-Typical examples: financial transactions, actuation commands on industrial machinery, billing events.
+**Use when** duplicate processing causes real harm.
+Typical examples: financial transactions, actuation commands on industrial machinery, and billing events.
 
 <Aside type="note">
   QoS 2 guarantees exactly-once delivery **between each pair of hops**: publisher → broker, and broker → subscriber.
   End-to-end exactly-once across both hops requires both sides to use QoS 2.
 </Aside>
+
+{/* DIAGRAM-PLACEHOLDER: two-hop end-to-end exactly-once delivery — publisher uses QoS 2 to broker, broker stores message, broker uses QoS 2 to subscriber; contrast with publisher QoS 2 + subscriber QoS 1 case where the subscriber hop loses the exactly-once guarantee */}
+
+```text
+   End-to-end exactly-once (both hops QoS 2)
+
+   Publisher                Broker                Subscriber
+       |     PUBLISH(QoS 2)    |                       |
+       |---------------------->|                       |
+       |       PUBREC          |                       |
+       |<----------------------|                       |
+       |       PUBREL          |                       |
+       |---------------------->|     PUBLISH(QoS 2)    |
+       |       PUBCOMP         |---------------------->|
+       |<----------------------|         PUBREC        |
+                               |<----------------------|
+                               |         PUBREL        |
+                               |---------------------->|
+                               |         PUBCOMP       |
+                               |<----------------------|
+```
 
 ## QoS downgrade
 
@@ -71,20 +96,51 @@ When the publisher's QoS and the subscriber's QoS differ, TBMQ delivers the mess
 
 <ImageGallery images={[{ src: '/src/assets/schemas/qos-downgrade.svg', alt: 'QoS downgrade: a publisher sending PUBLISH at QoS 1 and a subscriber subscribed at QoS 2 receive the message at QoS 1 — the lower of the two levels.', caption: 'When publisher and subscriber QoS levels differ, the broker delivers at the lower of the two — here a QoS 2 subscription only gets QoS 1 because the publisher used QoS 1.' }]} />
 
-This means a QoS 2 subscription does not guarantee exactly-once delivery if the publisher sends at QoS 0 or QoS 1.
-Design for the actual delivered level, not the subscribed level.
+A QoS 2 subscription therefore does not guarantee exactly-once delivery when the publisher sends at QoS 0 or
+QoS 1. Design for the actual delivered level, not the subscribed level.
+
+Note that TBMQ grants the QoS the subscriber requested in `SUBACK` — the downgrade is applied per message at
+delivery time, not when the subscription is created.
 
 ## QoS and session persistence
 
-QoS 1 and QoS 2 messages are only queued for offline clients when the subscriber uses a **persistent session**.
-With a non-persistent (clean) session, undelivered messages are discarded on disconnect regardless of QoS.
+Whether undelivered QoS 1 and QoS 2 messages survive a disconnect depends on the subscriber's session type.
+With a non-persistent (clean) session, the broker keeps no offline state at all, so any messages that arrive
+while the client is offline are dropped regardless of QoS. With a persistent session, the broker queues QoS 1
+and QoS 2 messages and delivers them when the client reconnects.
 
-| Session type | QoS 0 | QoS 1 / QoS 2 |
+| Subscriber session | QoS 0 | QoS 1 / QoS 2 |
 |---|---|---|
-| Non-persistent | Discarded on disconnect | Discarded on disconnect |
-| Persistent | Discarded on disconnect | Queued, delivered on reconnect |
+| Non-persistent | Dropped while offline | Dropped while offline |
+| Persistent | Dropped while offline | Queued, delivered on reconnect |
 
-For QoS 0 specifically, the broker never queues messages — even in a persistent session.
+QoS 0 messages are never queued for offline subscribers, even in a persistent session: the broker delivers them
+live or drops them. Likewise, a message published at QoS 0 is never persisted on the broker — even if some
+subscribers use a persistent session — because the publisher has no expectation of guaranteed delivery.
+
+{/* DIAGRAM-PLACEHOLDER: QoS 1 offline queueing for persistent subscriber — broker buffers messages while subscriber is offline, then delivers them on resume; only previously in-flight unacked messages carry DUP=1, fresh offline-queued messages do not */}
+
+```text
+   QoS 1 offline queueing and resume (persistent subscriber)
+
+   Publisher        Broker                      Subscriber
+       |    PUB(1)    |                             |
+       |------------->|                             |
+       |    PUBACK    |  store in offline queue     | (offline)
+       |<-------------|                             |
+       |    PUB(1)    |                             |
+       |------------->|                             |
+       |    PUBACK    |                             |
+       |<-------------|                             |
+                      |       <connect, resume>     |
+                      |<----------------------------|
+                      |        PUB(1) (msg #1)      |
+                      |---------------------------->|
+                      |        PUB(1) (msg #2)      |
+                      |---------------------------->|
+                      |          PUBACK             |
+                      |<----------------------------|
+```
 
 For details on how TBMQ stores queued messages per client type, see <DocLink product={props.product} path="concepts/sessions">Sessions</DocLink>.
 
@@ -97,4 +153,4 @@ For details on how TBMQ stores queued messages per client type, see <DocLink pro
 | Commands sent to a device (on/off, setpoint) | QoS 1 with idempotent handling |
 | Financial or billing events | QoS 2 |
 | Industrial actuation where duplicate execution causes damage | QoS 2 |
-| Analytics consumer that must process every event exactly once | QoS 2 (publisher and subscriber) |
+| Analytics consumer that must process every event exactly once | QoS 2 on both publisher and subscriber |

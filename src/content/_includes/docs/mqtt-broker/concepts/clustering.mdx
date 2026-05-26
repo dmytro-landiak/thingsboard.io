@@ -3,15 +3,15 @@ import DocLink from '@components/DocLink.astro';
 import ImageGallery from '~/components/ImageGallery.astro';
 import { Products } from '~/models/site.models';
 
-TBMQ is designed to scale horizontally by adding broker nodes to a cluster.
+TBMQ scales horizontally by adding broker nodes to a cluster.
 Every node is identical in capability — there is no master, no coordinator, and no node that holds privileged state.
-Any node can accept any client connection, and if a node goes down, clients reconnect to any remaining node and resume
+Any node can accept any client connection, and if a node goes down, clients reconnect to a remaining node and resume
 without data loss.
 
 This symmetry is possible because TBMQ delegates shared state to **Kafka**. Sessions, subscriptions, and all published
 messages live in Kafka topics, not in broker memory. Broker nodes maintain local in-memory copies for performance,
-but always treat Kafka as the source of truth. A newly joined node bootstraps its local state from Kafka and becomes
-fully operational without any manual intervention.
+but Kafka is always the source of truth. A newly joined node bootstraps its local state from Kafka and becomes
+fully operational without manual intervention.
 
 ## Standalone vs cluster
 
@@ -21,8 +21,8 @@ A standalone deployment is simply a cluster of one. When you need more capacity,
 <ImageGallery images={[{ src: '/src/assets/schemas/standalone-vs-cluster.svg', alt: 'Standalone vs cluster TBMQ deployments. Standalone: a single TBMQ node fronting Kafka, Redis, and PostgreSQL. Cluster: three TBMQ nodes behind a load balancer, all sharing the same Kafka, Redis, and PostgreSQL backend.', caption: 'A standalone deployment is a cluster of one. To scale, add identical TBMQ nodes behind a TCP load balancer — they share state through the same Kafka, Redis, and PostgreSQL backends.' }]} />
 
 A load balancer distributes incoming MQTT connections across all available nodes. Any standard TCP load balancer works —
-TBMQ has no affinity requirements. If a node fails, the load balancer routes new connections to healthy nodes, and
-existing clients reconnect automatically.
+TBMQ does not require client-to-node affinity (sticky sessions). If a node fails, the load balancer routes new
+connections to healthy nodes, and existing clients reconnect automatically.
 
 ## How state is shared
 
@@ -38,7 +38,7 @@ All state that must survive a node failure or be visible to other nodes is store
 
 Each node maintains a local in-memory **Subscription Trie** built from the client subscriptions topic.
 When a message arrives at any node, that node can independently determine which clients should receive it —
-no coordination with other nodes required for the matching step.
+no coordination with other nodes is required for the matching step.
 
 ## Message routing across nodes
 
@@ -47,7 +47,9 @@ TBMQ uses dedicated Kafka topics for cross-node delivery:
 
 <ImageGallery images={[{ src: '/src/assets/schemas/message-routing-across-nodes.svg', alt: 'Message routing across TBMQ nodes: (1) a subscriber subscribes via Node B; (2) a publisher sends PUBLISH to Node A; (3) Node A produces to Kafka; (4) Node B consumes from Kafka; (5) Node B delivers PUBLISH to the subscriber.', caption: 'A publisher and subscriber on different nodes are bridged by Kafka. Node A produces to a per-node downlink topic; Node B consumes it and delivers the PUBLISH to its local subscriber.' }]} />
 
-Two downlink topics exist per node:
+Two downlink topics exist per node, where `$SERVICE_ID` is the node identifier set by the `TB_SERVICE_ID`
+environment variable (defaults to the hostname):
+
 - `tbmq.msg.downlink.basic.$SERVICE_ID` — for non-persistent DEVICE subscribers
 - `tbmq.msg.downlink.persisted.$SERVICE_ID` — for persistent DEVICE subscribers
 
@@ -66,11 +68,11 @@ How a published message flows from a device to its APPLICATION consumer:
 <Steps>
 1. A device connects to **any** broker node and publishes a message.
 2. That node writes the message to the shared `tbmq.msg.all` Kafka topic.
-3. All broker nodes consume `tbmq.msg.all` as a **single consumer group** — each partition is handled by exactly one node.
-4. The node that owns the matched APPLICATION consumer delivers the message locally to its client.
+3. All broker nodes consume `tbmq.msg.all` as a **single consumer group** — each partition is consumed by exactly one node.
+4. The node that owns the matched APPLICATION consumer delivers the message to its client locally.
 </Steps>
 
-The consumer group load-balances the `tbmq.msg.all` partitions across nodes.
+The consumer group balances the `tbmq.msg.all` partitions across nodes.
 Add Kafka partitions and broker nodes together to increase ingestion throughput linearly.
 
 ### Fan-out (few publishers, many subscribers)
@@ -80,11 +82,11 @@ How one published message reaches N subscribers spread across the cluster:
 <Steps>
 1. The publisher sends a message to its broker node — call it **Node A**.
 2. Node A's in-memory **Subscription Trie** matches the topic to N subscribers.
-3. Subscribers connected to Node A are delivered to **directly**, with no extra hop.
-4. Subscribers on other nodes are reached via the target node's dedicated downlink topic in Kafka — for example, `tbmq.msg.downlink.basic.$NODE_B_ID` for Node B.
+3. Subscribers connected to Node A receive the message **directly**, with no extra hop.
+4. Subscribers on other nodes are reached via the target node's dedicated downlink topic in Kafka — for example, `tbmq.msg.downlink.basic.$SERVICE_ID` where `$SERVICE_ID` is Node B's identifier.
 </Steps>
 
-Each broker node delivers to the subscribers it owns directly. Cross-node delivery goes through per-node downlink topics.
+Each broker node delivers to its own subscribers directly. Cross-node delivery goes through per-node downlink topics.
 Fan-out throughput scales by adding nodes — each node handles its share of the subscriber population.
 
 ### Point-to-point (one publisher, one subscriber)
@@ -98,7 +100,7 @@ How a message reaches exactly one targeted subscriber — the same path as fan-o
 4. If the subscriber is on a **different node**, the message is forwarded through that node's dedicated downlink topic in Kafka.
 </Steps>
 
-Co-locating publisher and subscriber on the same node eliminates the cross-node hop entirely,
+Co-locating the publisher and the subscriber on the same node eliminates the cross-node hop entirely,
 yielding the lowest possible broker latency for targeted messaging.
 
 ## No single point of failure
@@ -107,21 +109,48 @@ The symmetric design eliminates the failure modes that affect coordinator-based 
 
 | What fails | Impact on TBMQ |
 |---|---|
-| One broker node | Clients on that node reconnect to any other node. Sessions and subscriptions restored from Kafka. In-flight messages redelivered via QoS 1/2. |
+| One broker node | Clients on that node reconnect to any other node. Sessions and subscriptions are restored from Kafka. In-flight QoS 1 and QoS 2 messages are redelivered on the new session. |
 | Kafka broker (with replication) | Shared consumer groups (`tbmq.msg.all`, `tbmq.msg.persisted`) pause during partition rebalance. APPLICATION per-client consumers (direct partition assignment) wait for partition leader election. Processing resumes from the last committed offset — no message loss, but messages polled before the last commit may be redelivered. |
 | Redis node | DEVICE persistent message delivery pauses until a replica is promoted to primary (Redis Sentinel or Redis Cluster failover). No data loss with replication enabled. |
 
 <Aside type="caution">
-  TBMQ publishes all messages — including QoS 0 — to Kafka before processing. Once a message reaches the Kafka broker,
-  TBMQ processing does not lose it. The no-loss guarantee for QoS 1 and QoS 2 extends to the publisher-to-broker hop:
-  TBMQ sends `PUBACK` only after Kafka acknowledges the write. For QoS 0, the publisher sends with no acknowledgement
-  and will not retransmit — so loss is possible at the network level before the message reaches the broker, not inside TBMQ.
+  TBMQ publishes every message — including QoS 0 — to Kafka before processing. Once a message reaches Kafka,
+  TBMQ does not lose it. The no-loss guarantee for QoS 1 and QoS 2 extends to the publisher-to-broker hop:
+  TBMQ sends `PUBACK` (QoS 1) or `PUBREC` (QoS 2) only after Kafka acknowledges the write. QoS 0 publishes are
+  not acknowledged and never retransmitted by the client, so packet loss is possible on the network before the
+  message reaches the broker — but not inside TBMQ.
 </Aside>
 
 ## Scaling guidelines
 
+Each component of the stack scales independently — you only grow the layer that is the current bottleneck.
+
+{/* DIAGRAM-PLACEHOLDER: Stacked TBMQ dependency layers (broker nodes, Kafka, Redis, PostgreSQL) with the scaling axis labelled per layer — "scale out: add nodes" for broker, "scale out: add partitions" for Kafka, "scale out: Redis Cluster shards" for Redis, "scale up: vertical / replicas" for PostgreSQL. */}
+
+```text
+       TBMQ cluster
++--------------------------+
+|  Broker node x N         |  ──►  scale out:  add nodes
++--------------------------+
+            │
+            ▼
++--------------------------+
+|  Kafka (msg.all, etc.)   |  ──►  scale out:  add partitions
++--------------------------+
+            │
+            ▼
++--------------------------+
+|  Redis (DEVICE storage)  |  ──►  scale out:  Redis Cluster shards
++--------------------------+
+            │
+            ▼
++--------------------------+
+|  PostgreSQL (metadata)   |  ──►  scale up:   vertical / replicas
++--------------------------+
+```
+
 **Add broker nodes** when CPU or connection count on existing nodes is the bottleneck.
-Nodes join the cluster automatically — no rolling restart required for the existing nodes.
+New nodes join the cluster automatically — no rolling restart of existing nodes is required.
 
 **Add Kafka partitions** to `tbmq.msg.all` when message ingestion throughput is the bottleneck.
 Each additional partition allows one more parallel consumer thread across the cluster.

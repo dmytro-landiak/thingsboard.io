@@ -7,8 +7,18 @@ Subscribers express interest by providing a **topic filter**, which may be an ex
 wildcard characters to match many topics at once. The broker evaluates each incoming message against all active
 subscriptions and delivers it to every matching subscriber.
 
-Topics are hierarchical. A forward slash (`/`) separates levels, and the resulting tree structure is what makes
+Topics are hierarchical: a forward slash (`/`) separates levels, and the resulting tree structure makes
 wildcard matching expressive enough to cover entire device fleets with a single subscription.
+
+{/* DIAGRAM-PLACEHOLDER: topic hierarchy tree showing how slashes create a tree and how a wildcard filter spans branches */}
+
+```text
+                       sensors
+                      /   |   \
+              livingroom  kitchen  garage
+              /    |       |        |
+           temp  humid    temp    door
+```
 
 ## Topic names and topic filters
 
@@ -16,16 +26,16 @@ wildcard matching expressive enough to cover entire device fleets with a single 
 |---|---|---|
 | **Used by** | Publishers (`PUBLISH` packet) | Subscribers (`SUBSCRIBE` packet) |
 | **Wildcards allowed** | No | Yes (`+` and `#`) |
-| **`$` prefix allowed** | No — reserved for system topics | Yes, via `$share/` for shared subscriptions |
+| **`$` prefix allowed** | No — reserved (broker rejects the publish) | Yes — used by shared subscriptions (`$share/...`) and system topics (`$SYS/...`) |
 | **Min length** | 1 character | 1 character |
-| **Max length** | 65,535 bytes | 65,535 bytes |
+| **Max length** | 65,535 UTF-8 bytes | 65,535 UTF-8 bytes |
 | **Null character** | Not allowed | Not allowed |
 
 Topic names and filters are **case-sensitive**: `sensors/temperature` and `Sensors/Temperature` are two distinct topics.
 
 ## Topic structure
 
-Each `/` creates a new level. For example, `sensors/livingroom/temperature` is composed of three levels:
+Each `/` introduces a new level. For example, `sensors/livingroom/temperature` consists of three levels:
 
 | Level | Segment        |
 |-------|----------------|
@@ -35,11 +45,22 @@ Each `/` creates a new level. For example, `sensors/livingroom/temperature` is c
 
 There is no required depth — a topic can be a single word or a long path.
 Leading and trailing slashes are valid but create empty levels that are easy to misread:
-`/sensors` has an empty first level and is a different topic from `sensors`.
+`/sensors` has an empty first level and is therefore a different topic from `sensors`.
 
 ## Wildcards
 
-### Multi-level wildcard`#`
+{/* DIAGRAM-PLACEHOLDER: side-by-side illustration of `+` (single level) and `#` (multi level) overlaid on a topic tree */}
+
+```text
+   sensors/+/temperature             sensors/#
+        matches one level             matches this level and all below
+
+      sensors/livingroom/temperature  sensors
+      sensors/bedroom/temperature     sensors/livingroom
+                                      sensors/livingroom/temperature
+```
+
+### Multi-level wildcard `#`
 
 Matches the level where it appears and every level below it.
 
@@ -56,11 +77,11 @@ Given the subscription `sensors/#`:
 Rules:
 - Must appear exactly once.
 - Must be the last character in the filter.
-- Must be preceded by `/` or be the entire filter (`#` alone).
+- Must be preceded by `/`, or be the entire filter (`#` alone).
 
 Invalid filters: `#sensors`, `#/sensors`, `sensors/#/temperature`
 
-### Single-level wildcard`+`
+### Single-level wildcard `+`
 
 Matches exactly one level — any characters, but only within a single segment.
 
@@ -74,7 +95,7 @@ Given the subscription `sensors/+/temperature`:
 | `sensors/temperature`                    | ✗       | No middle level                                     |
 
 Rules:
-- Must be surrounded by `/` on each side, or sit at the very start or end of the filter.
+- Must occupy an entire level — either delimited by `/` on each side, or at the very start or end of the filter.
 
 Invalid filters: `+sensors`, `sensors+`, `sensors/home+`, `sensors/+home`
 
@@ -100,12 +121,13 @@ Consider a client with these subscriptions:
 | `sensors/room1/#`         | 0   |
 
 When the topic `sensors/room1/temperature` is published, **both filters match**.
-In that case, TBMQ delivers the message **once**, using the subscription with the **highest QoS**.
-If multiple matching subscriptions share the same QoS, the first match wins.
+In that case, TBMQ delivers the message **once**, using the subscription with the **highest QoS** —
+QoS 1 in this example. If multiple matching subscriptions share the same QoS, that QoS is used and the
+message is still delivered only once.
 
 ## Shared subscription topics
 
-Shared subscriptions distribute messages across a group of subscribers rather than delivering to each one.
+Shared subscriptions distribute messages across a group of subscribers rather than delivering a copy to each one.
 They use a reserved prefix format:
 
 ```text
@@ -114,27 +136,30 @@ $share/{ShareName}/{TopicFilter}
 
 Example: `$share/analytics-group/country/+/city/+/home/#`
 
-The `{TopicFilter}` portion follows all the same wildcard rules as a regular subscription.
+- `{ShareName}` identifies the group; it must be at least one character long and cannot contain `+` or `#`.
+- `{TopicFilter}` follows the same wildcard rules as a regular subscription.
+
 For details, see <DocLink product={props.product} path="user-guide/shared-subscriptions">Shared subscriptions</DocLink>.
 
 ## Configuring the maximum topic depth
 
-Deep hierarchies increase the cost of subscription matching. TBMQ lets you enforce a segment limit with
-`MQTT_TOPIC_MAX_SEGMENTS_COUNT` (default: `0`, meaning no limit).
+Deep hierarchies increase the cost of subscription matching. TBMQ lets you cap the number of segments per topic
+with `MQTT_TOPIC_MAX_SEGMENTS_COUNT` (default: `0`, meaning no limit).
 
-When set to `N`, any `PUBLISH` or `SUBSCRIBE` packet whose topic contains more than `N` forward slashes is rejected.
+When set to `N`, any `PUBLISH` or `SUBSCRIBE` packet whose topic contains more than `N` forward slashes (`/`)
+is rejected.
 
 <Aside type="note">
   Set this limit based on your expected topic depth. For most IoT deployments, a value between 5 and 10 covers
-  all legitimate patterns and prevents accidental runaway paths from affecting broker performance.
+  all legitimate patterns and prevents accidental runaway paths from degrading broker performance.
 </Aside>
 
 ## Design guidelines
 
 - **Use lowercase only.** Topics are case-sensitive; mixing cases creates hard-to-debug duplicate streams.
 - **Avoid leading or trailing slashes.** `/sensors/home` and `sensors/home` are different topics.
-- **Avoid spaces and special characters** (except `/`). They are not forbidden but cause interoperability problems with some clients and parsing libraries.
+- **Avoid spaces and special characters** (except `/`). They are not forbidden, but cause interoperability problems with some clients and parsing libraries.
 - **Avoid non-ASCII characters.** Stick to ASCII to prevent encoding issues across platforms.
-- **Do not subscribe to `#` alone** unless you specifically need every message on the broker. It routes the full message stream to a single client and will saturate it at scale.
-- **Keep hierarchies shallow.** Three to five levels cover most patterns. Very deep paths are difficult to maintain and marginally slower to match.
+- **Do not subscribe to `#` alone** unless you specifically need every message on the broker. It routes the full message stream to a single client and will saturate it at scale. If a single firehose subscriber is acceptable in your environment but you want to block it elsewhere, set `MQTT_SUBSCRIPTION_ROOT_MULTI_LVL_WILDCARD` to `false`.
+- **Keep hierarchies shallow.** Three to five levels cover most patterns. Very deep paths are harder to maintain and marginally slower to match.
 - **Use categories at root levels, IDs at leaf levels.** A pattern like `{product}/{tenant}/{device-id}/telemetry` is easier to wildcard than `{device-id}/{product}/{tenant}/telemetry`.

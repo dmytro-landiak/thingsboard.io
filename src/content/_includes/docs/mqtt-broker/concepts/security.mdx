@@ -1,16 +1,20 @@
 import { Aside } from '@astrojs/starlight/components';
 import DocLink from '@components/DocLink.astro';
 import ImageGallery from '~/components/ImageGallery.astro';
+import ConditionalHeading from '~/components/ConditionalHeading.astro';
 import { Products } from '~/models/site.models';
 
-TBMQ enforces security in three sequential layers: transport encryption, authentication, and authorization.
+TBMQ enforces security in three sequential layers: transport, authentication, and authorization.
 Every connection passes through all three in order — a client cannot reach the authentication step without a valid transport
 channel, and cannot publish or subscribe without passing authorization.
 Understanding this layered model helps you decide which options to enable and in what combination for your deployment.
 
-The three layers are independent and composable. You can run unencrypted TCP with Basic authentication in a
+The three layers are independent and composable. You can run unencrypted TCP with Basic authentication on a
 trusted private network, or mutual TLS with JWT and strict per-topic authorization for a public-facing deployment.
-Each layer has sensible defaults, and each can be tuned without touching the others.
+Each layer ships with sensible defaults and can be tuned without touching the others.
+
+For step-by-step setup instructions, see the dedicated <DocLink product={props.product} path="security/overview">Security guide</DocLink>.
+This page is a high-level conceptual introduction.
 
 ## Security layers
 
@@ -28,50 +32,87 @@ Four listener types are available:
 | WS | MQTT over WebSocket | 8084 | No |
 | WSS | MQTT over WebSocket Secure | 8085 | Yes |
 
-Each listener is independently enabled or disabled. In production, disable the plain TCP and WS listeners and use
-only TLS or WSS to prevent credentials from being sent in clear text.
+Each listener can be enabled or disabled independently. In production, disable the plain TCP and WS listeners and
+use only TLS or WSS to prevent credentials from travelling in clear text.
 
-**One-way vs mutual TLS:** TLS listeners support both modes.
-- One-way TLS: the client verifies the broker's certificate. Credentials still travel in the `CONNECT` packet.
-- Mutual TLS (mTLS): both sides present certificates. This is the foundation for X.509 certificate authentication.
+**One-way vs mutual TLS.** TLS listeners support both modes:
+- One-way TLS — the client verifies the broker's certificate. Credentials still travel in the `CONNECT` packet.
+- Mutual TLS (mTLS) — both sides present certificates. This is the foundation for X.509 certificate authentication.
 
 For configuration details, see <DocLink product={props.product} path="security/listeners">Listeners</DocLink> and
-<DocLink product={props.product} path="security/mqtts">MQTTS</DocLink>.
+<DocLink product={props.product} path="security/mqtts">MQTT over TLS</DocLink>.
 
 <Aside type="note">
-  If no listeners with authentication are enabled, all connecting clients are assigned the DEVICE type and
-  no topic-level restrictions apply. This is acceptable in isolated lab environments but not in production.
+  If no authentication provider is enabled, every connecting client is authenticated by default — assigned the
+  DEVICE client type with no topic-level restrictions. This is acceptable in isolated lab environments but not
+  in production.
 </Aside>
 
 ## Layer 2: Authentication
 
 Authentication verifies client identity during the MQTT `CONNECT` handshake. TBMQ implements authentication as
-**pluggable providers** — each method is a separate, individually enabled provider. TBMQ tries them in a configurable
-execution order and grants access on the first successful match.
+**pluggable providers** — each method is a separate provider that can be individually enabled. Providers are
+evaluated in a configurable execution order, and the first one that authenticates the client wins.
 
 ### Authentication methods
 
 | Method | How identity is proved | Credential location | Notes |
 |---|---|---|---|
-| **Basic** | clientId, username, and/or password | `CONNECT` packet fields | Most common; Redis lookup for performance |
-| **X.509** | Client TLS certificate (CN matched against stored credentials) | TLS handshake | Requires mTLS listener; supports exact and regex CN matching |
-| **JWT** | Signed JSON Web Token | `password` field of `CONNECT` | No static credentials stored; supports HMAC, PEM, and JWKS verifiers |
-| **SCRAM** | Challenge-response using hashed credentials | MQTT 5.0 enhanced auth | Password never transmitted in clear text; MQTT 5.0 only |
-| **HTTP** | Delegated to an external HTTP service | External system | Returns `clientType` and authorization rules dynamically |
+| **Basic** | clientId, username, and/or password | `CONNECT` packet fields | Most common method; passwords are bcrypt-hashed in PostgreSQL and cached in Redis |
+| **X.509** | Client TLS certificate (CN matched against stored credentials) | TLS handshake | Requires an mTLS listener; supports both exact and regex CN matching |
+| **JWT** | Signed JSON Web Token | `password` field of `CONNECT` | No static credentials are stored; supports HMAC, PEM, and JWKS verifiers |
+| **SCRAM** | Challenge-response using hashed credentials | MQTT 5.0 enhanced authentication (`AUTH` packet) | Password is never transmitted; MQTT 5.0 only |
+| **HTTP** | Delegated to an external HTTP service | External system | Service returns `clientType` and authorization rules dynamically |
 
-Adding or removing providers is not supported — only their configuration and execution order can be changed.
+The set of providers is fixed — you cannot add or remove provider types. You can only enable, disable, configure,
+and reorder them.
 
 ### Provider execution order
 
-When multiple providers are enabled, TBMQ tries each in the configured sequence until one successfully authenticates
-the client. If no provider grants access, the connection is refused.
+When multiple providers are enabled, TBMQ evaluates them in the configured sequence. Each provider returns one
+of three outcomes:
+
+- **Success** — the provider authenticates the client. The chain stops and the connection is accepted.
+- **Skipped** — the provider cannot evaluate the client's credentials (for example, the X.509 provider sees no
+  client certificate). The next provider in the order is tried.
+- **Failure** — the provider explicitly rejects the client (for example, the HTTP provider returns a non-success
+  response). The chain stops and the connection is refused without trying further providers.
+
+If the chain finishes without a success or an explicit failure, the connection is refused. The broker returns a
+CONNACK with the appropriate reason code — `0x05 Not Authorized` for MQTT 3.x or `0x87 Not Authorized` for MQTT 5.0.
 
 Configure the order on the <DocLink product={props.product} path="user-guide/ui/settings/#mqtt-authentication">MQTT Authentication Settings</DocLink> page.
 
+{/* DIAGRAM-PLACEHOLDER: provider chain — CONNECT arrives, providers evaluated in order, each returning success/skipped/failure. Show short-circuit on success and on explicit failure. */}
+
+```text
+              CONNECT
+                 |
+                 v
+        +--------+--------+        success
+        | Provider #1     |---------------------> Accept
+        +--------+--------+
+                 | skipped
+                 v
+        +--------+--------+        success
+        | Provider #2     |---------------------> Accept
+        +--------+--------+
+                 | skipped              failure
+                 v                  +----------> Refuse
+        +--------+--------+         |
+        | Provider #N     |---------+
+        +--------+--------+
+                 | skipped
+                 v
+              Refuse
+```
+
 ### Credential caching
 
-Matched credentials are cached in Redis for fast lookups on subsequent `CONNECT` packets from the same client.
-PostgreSQL is the persistent store; Redis is the performance layer in front of it.
+Authentication artifacts are cached in Redis to keep `CONNECT` handling cheap on subsequent connections from
+the same client. PostgreSQL remains the persistent store of record; Redis is the performance layer in front
+of it. Cache TTLs are tunable per cache (for example, `CACHE_SPECS_BASIC_CREDENTIALS_PASSWORD_TTL` defaults to
+1 minute for hashed passwords).
 
 ### When to use which method
 
@@ -79,42 +120,50 @@ PostgreSQL is the persistent store; Redis is the performance layer in front of i
 |---|---|
 | Internal IoT devices with fixed credentials | Basic |
 | Devices already enrolled with certificates via PKI | X.509 |
-| Integration with an OAuth2 / OpenID Connect identity provider | JWT |
-| Regulated environment where plaintext passwords are not acceptable | SCRAM |
+| Integration with an OAuth 2.0 or OpenID Connect identity provider | JWT |
+| Regulated environment where plaintext passwords are not acceptable on the wire | SCRAM |
 | Credentials managed by an existing external system or custom logic | HTTP |
-| Multiple credential types coexist in the same deployment | Enable multiple providers, set execution order |
+| Multiple credential types coexist in the same deployment | Enable multiple providers and set the execution order |
 
 ## Layer 3: Authorization
 
 Authorization controls what an authenticated client can do after connecting.
-TBMQ enforces **topic-level access control** per credential using regular expression patterns.
-Publish and subscribe permissions are configured independently.
+TBMQ enforces **topic-level access control** per credential using regular-expression patterns.
+Publish and subscribe permissions are configured as independent lists of patterns — a topic is allowed if any
+pattern in the relevant list matches.
 
 For example, a credential `sensor-device-001` might carry these rules:
 
-| Field          | Value                         |
-|----------------|-------------------------------|
-| Publish rule   | `sensors/device-001/.*`       |
-| Subscribe rule | `commands/device-001/[^/]+`   |
+| Field           | Value                          |
+|-----------------|--------------------------------|
+| Publish rules   | `sensors/device-001/.*`        |
+| Subscribe rules | `commands/device-001/[^/]+`    |
 
-When a client publishes to a topic not covered by its authorization rules, the broker's response depends on the
-MQTT version:
+When a client publishes to a topic not covered by its authorization rules, the broker's response depends on
+the MQTT version:
 
-- **MQTT 3.x** — the broker disconnects the client.
-- **MQTT 5.0** — the broker sends a `PUBACK` (QoS 1) or `PUBREC` (QoS 2) with the `Not Authorized` reason code,
-  and the client remains connected.
+- **MQTT 3.x** — the broker disconnects the client (no negative reason code is defined for `PUBACK`/`PUBREC`
+  in 3.x).
+- **MQTT 5.0** — the broker sends a `PUBACK` (QoS 1) or `PUBREC` (QoS 2) with the `0x87 Not Authorized` reason
+  code, and the client remains connected. For QoS 0 the publish is silently dropped, as no acknowledgement
+  exists.
 
-When a client subscribes to a topic not covered by its authorization rules, the broker sends a `SUBACK` with
-the `Not Authorized` reason code. The subscription is not established.
+When a client subscribes to a topic not covered by its authorization rules, the broker sends a `SUBACK` for
+that topic filter and the subscription is not established. The exact code differs by MQTT version:
+
+- **MQTT 3.x** — `0x80 Failure` (the only failure code defined for SUBACK in 3.1.1).
+- **MQTT 5.0** — `0x87 Not Authorized`.
+
+Other topic filters in the same SUBSCRIBE packet are processed independently.
 
 ### Dynamic authorization
 
-Two providers support returning authorization rules at connection time rather than storing them statically:
+Two providers can return authorization rules at connection time rather than storing them statically:
 
-- **JWT**: rules extracted from token claims. The token payload can specify client type and topic patterns,
-  enabling centralized access control through your identity provider.
-- **HTTP**: the external authentication service returns `clientType` and authorization rules in its response body.
-  If the response omits these fields, the provider's default rules apply.
+- **JWT** — rules are extracted from token claims. The token payload can specify the client type and the
+  publish/subscribe topic patterns, enabling centralized access control through your identity provider.
+- **HTTP** — the external authentication service returns `clientType` and authorization rules in its response
+  body. If the response omits these fields, the provider's configured defaults apply.
 
 This means you can manage topic permissions in your identity system and have TBMQ enforce them without
 maintaining per-device credential records in the broker.
@@ -124,21 +173,21 @@ maintaining per-device credential records in the broker.
 Each credential carries two things: topic authorization rules and a <DocLink product={props.product} path="concepts/client-types">client type</DocLink>.
 Both are resolved from the same credential during the `CONNECT` handshake.
 
-The `clientType` field determines whether the connecting client is treated as **DEVICE** or **APPLICATION**, which
-controls how the broker stores its session state and routes messages to it — not just what topics it can access.
+The `clientType` field determines whether the connecting client is treated as **DEVICE** or **APPLICATION**.
+This affects how the broker stores session state and routes messages — not just what topics the client can access.
 
 For example, a credential `sensor-gateway-001` might carry these attributes:
 
-| Field          | Value                          |
-|----------------|--------------------------------|
-| clientType     | `DEVICE`                       |
-| Publish rule   | `sensors/gateway-001/.*`       |
-| Subscribe rule | `commands/gateway-001/[^/]+`   |
+| Field           | Value                          |
+|-----------------|--------------------------------|
+| clientType      | `DEVICE`                       |
+| Publish rules   | `sensors/gateway-001/.*`       |
+| Subscribe rules | `commands/gateway-001/[^/]+`   |
 
-For static providers (Basic, X.509, SCRAM), `clientType` is set when the credential is created in the UI and does not
-change between connections. For dynamic providers (JWT, HTTP), `clientType` is returned at connection time — the JWT
-payload or HTTP response body can specify it, which allows the same broker credential store to serve clients of
-different types without creating separate credential records.
+For static providers (Basic, X.509, SCRAM) the `clientType` is set when the credential is created and does not
+change between connections. For dynamic providers (JWT, HTTP) the `clientType` is returned at connection time —
+the JWT payload or the HTTP response body can specify it, which lets the same broker serve clients of different
+types without creating separate credential records.
 
 ## Putting the layers together
 
@@ -147,8 +196,24 @@ A practical example for a production IoT deployment:
 | Layer          | Configuration                                                              |
 |----------------|----------------------------------------------------------------------------|
 | Transport      | SSL listener (mutual TLS, port 8883)                                       |
-| Authentication | X.509 provider — CN matched against device credentials                     |
+| Authentication | X.509 provider — CN matched against stored device credentials              |
 | Authorization  | Publish to `sensors/{device-id}/+`, subscribe to `commands/{device-id}/+`  |
 
-Result: the device's identity is proven by its certificate (no password needed), the channel is encrypted,
-and the broker rejects any attempt to publish to another device's topic.
+The device's identity is proven by its certificate (no password needed), the channel is encrypted, and the
+broker rejects any attempt to publish to another device's topic.
+
+{props.product === Products.TBMQ_PE && (
+  <>
+    <ConditionalHeading level={2} id="additional-security-capabilities" showFor="mqtt-broker-pe">Additional security capabilities</ConditionalHeading>
+
+    <p>Beyond the three layers above, TBMQ provides extra controls for administrative and operational security:</p>
+
+    <ul>
+      <li><DocLink product={props.product} path="security/oauth-2-support">OAuth 2.0 / OIDC SSO</DocLink> for authenticating users into the TBMQ web UI through an external identity provider.</li>
+      <li><DocLink product={props.product} path="security/rbac">Role-based access control (RBAC)</DocLink> for administrators and API users.</li>
+      <li><DocLink product={props.product} path="security/audit-log">Audit log</DocLink> recording who changed what and when — useful for compliance and post-incident review.</li>
+    </ul>
+
+    <p>These features apply to humans and API clients accessing TBMQ, not to MQTT-level client connections, which are still governed by the three layers described above.</p>
+  </>
+)}
